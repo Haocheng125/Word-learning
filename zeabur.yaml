@@ -1,0 +1,11 @@
+name: word-learning
+
+services:
+  backend:
+    build:
+      dockerfile: Dockerfile
+    ports:
+      - 8080
+    env:
+      - SECRET_KEY
+      - JWT_SECRET_KEY
