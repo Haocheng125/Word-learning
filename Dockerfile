@@ -25,5 +25,5 @@ RUN mkdir -p uploads
 # 暴露端口（Zeabur 会自动使用 PORT 环境变量）
 EXPOSE 8080
 
-# 启动命令
-CMD ["sh", "-c", "python -c 'from app import create_app; from app.extensions import db; app = create_app(); app.app_context().push(); db.create_all(); print(\"Database initialized!\")' || echo 'DB init skipped' && gunicorn -w 4 -b 0.0.0.0:${PORT:-8080} wsgi:app"]
+# 启动命令 - 监听 Zeabur 提供的 PORT 环境变量
+CMD ["sh", "-c", "python -c 'from app import create_app; from app.extensions import db; app = create_app(); app.app_context().push(); db.create_all(); print(\"Database initialized!\")' || echo 'DB init skipped' && gunicorn -w 4 -b 0.0.0.0:$PORT wsgi:app"]
