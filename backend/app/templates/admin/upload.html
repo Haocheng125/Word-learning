@@ -1,0 +1,124 @@
+{% extends "admin/base.html" %}
+
+{% block title %}上传 Excel{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1>📤 上传 Excel 词库</h1>
+    <a href="/admin/wordbooks" class="btn">返回词库列表</a>
+</div>
+
+<div class="card">
+    <form id="uploadForm" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="name">词库名称 *</label>
+            <input type="text" id="name" name="name" required placeholder="例如：大学英语四级词汇">
+        </div>
+        
+        <div class="form-group">
+            <label for="description">描述</label>
+            <textarea id="description" name="description" rows="3" placeholder="简单描述这个词库的内容和用途"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="excel_file">选择 Excel 文件 *</label>
+            <input type="file" id="excel_file" name="excel_file" accept=".xlsx,.xls" required>
+            <small style="color: #7f8c8d; display: block; margin-top: 0.5rem;">
+                支持 .xlsx 和 .xls 格式，第一列为英文单词，第二列为中文释义
+            </small>
+        </div>
+        
+        <div id="progress" style="display: none; margin: 1rem 0;">
+            <div style="background: #ecf0f1; border-radius: 4px; overflow: hidden;">
+                <div id="progressBar" style="background: #3498db; height: 30px; width: 0%; transition: width 0.3s; text-align: center; line-height: 30px; color: white;">
+                    0%
+                </div>
+            </div>
+            <p id="statusText" style="margin-top: 0.5rem; color: #7f8c8d;">正在上传...</p>
+        </div>
+        
+        <button type="submit" class="btn btn-success" id="submitBtn">开始上传并解析</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>📋 使用说明</h2>
+    <ul style="line-height: 2;">
+        <li>支持上传 Excel 文件（.xlsx 或 .xls）</li>
+        <li>第一列：英文单词（Word）</li>
+        <li>第二列：中文释义（Meaning）</li>
+        <li>系统会自动识别表头（如果有）</li>
+        <li>文件大小限制：50MB</li>
+        <li>上传后会自动显示解析结果</li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('name').value.trim();
+    const description = document.getElementById('description').value.trim();
+    const fileInput = document.getElementById('excel_file');
+    const file = fileInput.files[0];
+    
+    if (!name || !file) {
+        alert('请填写词库名称并选择 Excel 文件');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('description', description);
+    formData.append('excel_file', file);
+    
+    // 显示进度条
+    document.getElementById('progress').style.display = 'block';
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('submitBtn').textContent = '上传中...';
+    
+    // 模拟进度条动画
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        if (progress < 90) {
+            progress += Math.random() * 10;
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('progressBar').textContent = Math.floor(progress) + '%';
+        }
+    }, 500);
+    
+    try {
+        const response = await fetch('/admin/api/upload-excel', {
+            method: 'POST',
+            body: formData
+        });
+        
+        clearInterval(progressInterval);
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('progressBar').style.width = '100%';
+            document.getElementById('progressBar').textContent = '100%';
+            document.getElementById('statusText').textContent = `✅ ${data.message}`;
+            document.getElementById('statusText').style.color = '#27ae60';
+            
+            alert(`上传成功！共导入 ${data.word_count} 个单词\n词库已创建，默认为下架状态，请在词库列表中手动上架`);
+            setTimeout(() => {
+                window.location.href = '/admin/wordbooks';
+            }, 1500);
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (error) {
+        clearInterval(progressInterval);
+        document.getElementById('statusText').textContent = '❌ ' + error.message;
+        document.getElementById('statusText').style.color = '#e74c3c';
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').textContent = '开始上传并解析';
+        alert('上传失败：' + error.message);
+    }
+});
+</script>
+{% endblock %}

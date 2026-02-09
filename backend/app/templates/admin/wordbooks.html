@@ -1,0 +1,122 @@
+{% extends "admin/base.html" %}
+
+{% block title %}词库管理{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1>📖 词库管理</h1>
+    <a href="/admin/upload" class="btn btn-success">+ 上传新词库</a>
+</div>
+
+<div class="card">
+    {% if wordbooks %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>名称</th>
+                <th>描述</th>
+                <th>单词数</th>
+                <th>状态</th>
+                <th>文件名</th>
+                <th>创建时间</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for wb in wordbooks %}
+            <tr>
+                <td>{{ wb.id }}</td>
+                <td><strong>{{ wb.name }}</strong></td>
+                <td>{{ wb.description[:50] }}{% if wb.description|length > 50 %}...{% endif %}</td>
+                <td><strong>{{ wb.word_count }}</strong></td>
+                <td>
+                    {% if wb.is_active %}
+                        <span style="color: #27ae60; font-weight: bold;">✅ 已上架</span>
+                    {% else %}
+                        <span style="color: #e74c3c; font-weight: bold;">❌ 已下架</span>
+                    {% endif %}
+                </td>
+                <td>{{ wb.pdf_filename or '无' }}</td>
+                <td>{{ wb.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    <a href="/admin/download/{{ wb.pdf_filename }}" class="btn" style="background: #3498db;">📄 查看</a>
+                    <button class="btn" style="background: {% if wb.is_active %}#e67e22{% else %}#27ae60{% endif %};" 
+                            onclick="toggleStatus({{ wb.id }}, {{ wb.is_active|lower }})">
+                        {% if wb.is_active %}🔻 下架{% else %}🔺 上架{% endif %}
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteWordbook({{ wb.id }}, '{{ wb.name }}')"> 🗑️ 删除</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if pagination.has_prev or pagination.has_next %}
+    <div class="pagination">
+        {% if pagination.has_prev %}
+        <a href="?page={{ pagination.prev_num }}">上一页</a>
+        {% endif %}
+        
+        <span style="padding: 0.5rem 1rem;">第 {{ pagination.page }} / {{ pagination.pages }} 页</span>
+        
+        {% if pagination.has_next %}
+        <a href="?page={{ pagination.next_num }}">下一页</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <p>暂无词库数据，<a href="/admin/upload">点击上传</a>第一个词库</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleStatus(id, currentStatus) {
+    const action = currentStatus ? '下架' : '上架';
+    if (!confirm(`确定要${action}此词库吗？`)) {
+        return;
+    }
+    
+    fetch(`/admin/api/wordbooks/${id}/toggle`, {
+        method: 'POST'
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('操作失败：' + data.message);
+        }
+    })
+    .catch(err => {
+        alert('操作失败：' + err.message);
+    });
+}
+
+function deleteWordbook(id, name) {
+    if (!confirm(`确定要删除词库"${name}"吗？此操作将删除所有相关单词和学习进度！`)) {
+        return;
+    }
+    
+    fetch(`/admin/api/wordbooks/${id}`, {
+        method: 'DELETE'
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('删除成功');
+            location.reload();
+        } else {
+            alert('删除失败：' + data.message);
+        }
+    })
+    .catch(err => {
+        alert('删除失败：' + err.message);
+    });
+}
+</script>
+{% endblock %}

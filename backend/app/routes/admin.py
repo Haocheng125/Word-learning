@@ -1,0 +1,189 @@
+from flask import Blueprint, render_template, request, jsonify, current_app, send_from_directory
+from werkzeug.utils import secure_filename
+import os
+import traceback
+from datetime import datetime
+from ..extensions import db
+from ..models.user import User
+from ..models.wordbook import Wordbook
+from ..models.word import Word
+from ..services.excel_parser import parse_excel
+
+admin_bp = Blueprint('admin', __name__, template_folder='../templates')
+
+
+@admin_bp.route('/')
+def index():
+    """管理后台首页"""
+    # 统计数据
+    total_wordbooks = Wordbook.query.count()
+    total_users = User.query.count()
+    total_words = Word.query.count()
+    active_wordbooks = Wordbook.query.filter_by(is_active=True).count()
+    
+    return render_template('admin/index.html',
+                         total_wordbooks=total_wordbooks,
+                         total_users=total_users,
+                         total_words=total_words,
+                         active_wordbooks=active_wordbooks)
+
+
+@admin_bp.route('/wordbooks')
+def wordbooks():
+    """词库管理页面"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    pagination = Wordbook.query.order_by(Wordbook.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('admin/wordbooks.html',
+                         wordbooks=pagination.items,
+                         pagination=pagination)
+
+
+@admin_bp.route('/upload')
+def upload():
+    """Excel上传页面"""
+    return render_template('admin/upload.html')
+
+
+@admin_bp.route('/api/upload-excel', methods=['POST'])
+def api_upload_excel():
+    """上传 Excel 文件并创建词库"""
+    if 'excel_file' not in request.files:
+        return jsonify({'success': False, 'message': '请上传Excel文件'}), 400
+    
+    excel_file = request.files['excel_file']
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    
+    if not excel_file.filename:
+        return jsonify({'success': False, 'message': '请选择文件'}), 400
+    
+    if not name:
+        return jsonify({'success': False, 'message': '请输入单词书名称'}), 400
+    
+    # 验证文件格式
+    if not excel_file.filename.lower().endswith(('.xlsx', '.xls')):
+        return jsonify({'success': False, 'message': '只支持Excel文件（.xlsx 或 .xls）'}), 400
+    
+    # 生成唯一文件名
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    original_filename = secure_filename(excel_file.filename)
+    filename = f"{timestamp}_{original_filename}"
+    filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+    
+    try:
+        # 保存Excel文件
+        excel_file.save(filepath)
+        
+        # 解析Excel
+        words_data = parse_excel(filepath)
+        
+        if not words_data:
+            os.remove(filepath)
+            return jsonify({
+                'success': False, 
+                'message': 'Excel中未找到有效的单词数据'
+            }), 400
+        
+        # 创建单词书
+        wordbook = Wordbook(
+            name=name,
+            description=description,
+            pdf_filename=filename,
+            word_count=len(words_data),
+            is_active=False  # 默认下架状态
+        )
+        db.session.add(wordbook)
+        db.session.flush()
+        
+        # 批量插入单词
+        for seq, (word, phonetic, translation) in enumerate(words_data, 1):
+            word_obj = Word(
+                wordbook_id=wordbook.id,
+                word=word,
+                phonetic=phonetic,
+                translation=translation,
+                sequence=seq
+            )
+            db.session.add(word_obj)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'成功导入 {len(words_data)} 个单词',
+            'wordbook_id': wordbook.id,
+            'word_count': len(words_data)
+        }), 201
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'上传失败: {str(e)}\n{traceback.format_exc()}')
+        
+        # 清理文件
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        
+        return jsonify({
+            'success': False, 
+            'message': f'上传失败: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/wordbooks/<int:wordbook_id>/toggle', methods=['POST'])
+def toggle_wordbook_status(wordbook_id):
+    """切换词库上架/下架状态"""
+    try:
+        wordbook = Wordbook.query.get_or_404(wordbook_id)
+        wordbook.is_active = not wordbook.is_active
+        db.session.commit()
+        
+        status_text = '上架' if wordbook.is_active else '下架'
+        return jsonify({
+            'success': True,
+            'message': f'词库已{status_text}',
+            'is_active': wordbook.is_active
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/wordbooks/<int:wordbook_id>', methods=['DELETE'])
+def delete_wordbook(wordbook_id):
+    """删除词库"""
+    try:
+        wordbook = Wordbook.query.get_or_404(wordbook_id)
+        filename = wordbook.pdf_filename
+        
+        # 删除数据库记录（级联删除单词）
+        db.session.delete(wordbook)
+        db.session.commit()
+        
+        # 删除文件
+        if filename:
+            filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        
+        return jsonify({'success': True, 'message': '词库删除成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/download/<filename>')
+def download_file(filename):
+    """下载/查看Excel文件"""
+    try:
+        return send_from_directory(
+            current_app.config['UPLOAD_FOLDER'],
+            filename,
+            as_attachment=True
+        )
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 404
