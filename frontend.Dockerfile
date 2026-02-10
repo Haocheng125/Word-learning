@@ -21,17 +21,7 @@ FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # 创建 nginx 配置 - 直接监听 PORT 环境变量
-RUN echo '
-\
-server {\n\
-    listen ${PORT:-80};\n\
-    location / {\n\
-        root /usr/share/nginx/html;\n\
-        index index.html;\n\
-        try_files $uri $uri/ /index.html;\n\
-    }\n\
-}\n\
-' > /etc/nginx/conf.d/default.conf
+RUN echo 'server {\n    listen \${PORT:-80};\n    location / {\n        root /usr/share/nginx/html;\n        index index.html;\n        try_files \$uri \$uri/ /index.html;\n    }\n}' > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
