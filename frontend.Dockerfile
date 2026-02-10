@@ -17,29 +17,22 @@ RUN npm run build
 # 使用 nginx 提供静态文件
 FROM nginx:alpine
 
-# 安装 envsubst 用于替换环境变量
-RUN apk add --no-cache gettext
-
 # 复制构建产物
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 创建 nginx 配置模板
-RUN echo 'server { \n\
-    listen $PORT; \n\
-    location / { \n\
-        root /usr/share/nginx/html; \n\
-        index index.html; \n\
-        try_files \$uri \$uri/ /index.html; \n\
-    } \n\
-}' > /etc/nginx/conf.d/default.conf.template
-
-# 创建启动脚本
-RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
-    echo 'export PORT=${PORT:-80}' >> /docker-entrypoint.sh && \
-    echo 'envsubst '\''$PORT'\'' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf' >> /docker-entrypoint.sh && \
-    echo 'nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
-    chmod +x /docker-entrypoint.sh
+# 创建 nginx 配置 - 直接监听 PORT 环境变量
+RUN echo '
+\
+server {\n\
+    listen ${PORT:-80};\n\
+    location / {\n\
+        root /usr/share/nginx/html;\n\
+        index index.html;\n\
+        try_files $uri $uri/ /index.html;\n\
+    }\n\
+}\n\
+' > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
-CMD ["/docker-entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]
