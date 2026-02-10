@@ -25,11 +25,11 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 # 创建 nginx 配置模板
 RUN echo 'server { \n\
-    listen ${PORT}; \n\
+    listen $PORT; \n\
     location / { \n\
         root /usr/share/nginx/html; \n\
         index index.html; \n\
-        try_files $uri $uri/ /index.html; \n\
+        try_files \$uri \$uri/ /index.html; \n\
     } \n\
 }' > /etc/nginx/conf.d/default.conf.template
 
