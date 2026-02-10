@@ -31,6 +31,22 @@ def create_app():
     app.register_blueprint(vocabulary_bp, url_prefix='/api/vocabulary')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     
+    # 根路由 - API 状态检查
+    @app.route('/')
+    def index():
+        return {
+            'status': 'ok',
+            'message': '单词学习系统 API 服务正常运行',
+            'endpoints': {
+                'admin': '/admin',
+                'api': '/api'
+            }
+        }
+    
+    @app.route('/health')
+    def health():
+        return {'status': 'healthy'}
+    
     # 创建数据库表
     with app.app_context():
         db.create_all()
