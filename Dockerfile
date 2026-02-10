@@ -22,14 +22,14 @@ COPY backend/ .
 # 创建上传目录
 RUN mkdir -p uploads
 
-# 暴露端口（Zeabur 会自动使用 PORT 环境变量）
-EXPOSE 8080
+# 暴露端口
+EXPOSE 5000
 
-# 创建启动脚本
+# 创建启动脚本 - 强制使用 5000 端口
 RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'echo "Starting application on port $PORT..."' >> /start.sh && \
+    echo 'echo "Starting application on port 5000..."' >> /start.sh && \
     echo 'python -c "from app import create_app; from app.extensions import db; app = create_app(); app.app_context().push(); db.create_all(); print(\"Database initialized!\")" || echo "DB init skipped"' >> /start.sh && \
-    echo 'exec gunicorn -w 4 -b 0.0.0.0:$PORT wsgi:app' >> /start.sh && \
+    echo 'exec gunicorn -w 4 -b 0.0.0.0:5000 wsgi:app' >> /start.sh && \
     chmod +x /start.sh
 
 # 启动命令
