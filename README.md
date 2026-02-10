@@ -2,6 +2,10 @@
 
 一个基于 Flask + Vue3 的单词学习网站，支持 Excel 词库导入、在线学习和生词本管理。
 
+> 🌐 **在线访问**
+> - 前端（用户端）: https://incomparable-llama-827043.netlify.app/
+> - 后端（管理端）: https://lain05.zeabur.app/admin
+
 ## 📁 项目结构
 
 ```
@@ -27,28 +31,48 @@
 │   ├── frontend.Dockerfile
 │   └── nginx.conf
 ├── docker-compose.yml     # 容器编排
-├── init.sql              # 数据库初始化
-└── list1.xlsx            # 示例词库
+└── init.sql              # 数据库初始化
 ```
 
 ## 🚀 快速开始
 
 ### 本地开发
 
-1. **启动所有服务**
+1. **安装依赖**
+```bash
+# 后端
+cd backend
+pip install -r requirements.txt
+
+# 前端
+cd ../frontend
+npm install
+```
+
+2. **启动服务**
+```bash
+# 后端 (端口 5000)
+cd backend
+python wsgi.py
+
+# 前端 (端口 4000)
+cd frontend
+npm run dev
+```
+
+3. **访问应用**
+- 前端（用户端）: http://localhost:4000
+- 后端（管理端）: http://localhost:5000/admin
+
+### Docker 部署
+
 ```bash
 docker-compose up -d
 ```
 
-2. **访问应用**
-- 前端（用户端）: http://localhost:8040
-- 后端（管理端）: http://localhost:5000/admin
-
-### 停止服务
-
-```bash
-docker-compose down
-```
+访问地址：
+- 前端: http://localhost:80
+- 后端: http://localhost:5000/admin
 
 ## ✨ 主要功能
 
@@ -105,9 +129,27 @@ JWT_SECRET_KEY=your_jwt_secret_key
 - `mysql_data`: 数据库数据
 - `uploads_data`: 上传的 Excel 文件
 
-## 🛠️ 维护命令
+## 🛠️ 开发维护
+
+### 本地开发命令
 
 ```bash
+# 后端开发
+cd backend
+python wsgi.py  # 启动服务 (端口 5000)
+
+# 前端开发
+cd frontend
+npm run dev     # 启动服务 (端口 4000)
+npm run build   # 构建生产版本
+```
+
+### Docker 管理
+
+```bash
+# 启动服务
+docker-compose up -d
+
 # 查看日志
 docker-compose logs -f backend
 docker-compose logs -f frontend
@@ -118,9 +160,15 @@ docker-compose restart
 # 重新构建
 docker-compose up -d --build
 
-# 备份数据库
-docker-compose exec mysql mysqldump -uroot -p word_learning > backup.sql
+# 停止服务
+docker-compose down
 ```
+
+### 生产部署
+
+**前端**：使用 Netlify Drop 部署 `frontend/dist` 目录
+
+**后端**：部署到 Zeabur 平台
 
 ## 📄 许可证
 
