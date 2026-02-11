@@ -1,0 +1,147 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ wordbook.name }} - 单词列表{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <div>
+        <h1>📚 {{ wordbook.name }}</h1>
+        <p style="color: #666; margin-top: 0.5rem;">
+            共 {{ words|length }} 个单词 | 
+            状态: {% if wordbook.is_active %}✅ 已上架{% else %}❌ 已下架{% endif %}
+        </p>
+    </div>
+    <div>
+        <a href="/admin/wordbooks" class="btn">返回词库列表</a>
+        <a href="/admin/wordbooks/{{ wordbook.id }}/toggle" 
+           class="btn" 
+           style="background: {% if wordbook.is_active %}#e67e22{% else %}#27ae60{% endif %}; margin-left: 10px;"
+           onclick="toggleStatus(event, {{ wordbook.id }}, {{ wordbook.is_active|lower }})">
+            {% if wordbook.is_active %}🔻 下架{% else %}🔺 上架{% endif %}
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    {% if words %}
+    <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+        <h3>单词列表</h3>
+        <div>
+            <button class="btn" onclick="exportToExcel()" style="background: #3498db;">📥 导出Excel</button>
+        </div>
+    </div>
+    
+    <div style="overflow-x: auto;">
+        <table style="min-width: 800px;">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">序号</th>
+                    <th style="width: 150px;">英文单词</th>
+                    <th style="width: 150px;">音标</th>
+                    <th>中文翻译</th>
+                    <th style="width: 120px;">创建时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for word in words %}
+                <tr>
+                    <td style="text-align: center; font-weight: bold;">{{ word.sequence }}</td>
+                    <td style="font-weight: bold; color: #2c3e50;">{{ word.word }}</td>
+                    <td style="color: #7f8c8d;">{{ word.phonetic or '-' }}</td>
+                    <td>{{ word.translation }}</td>
+                    <td style="color: #95a5a6; font-size: 0.9em;">
+                        {{ word.created_at.strftime('%Y-%m-%d') if word.created_at else '-' }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
+        <h4>📊 统计信息</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 0.5rem;">
+            <div>
+                <strong>总单词数:</strong> {{ words|length }}
+            </div>
+            <div>
+                <strong>有音标:</strong> {{ words|selectattr('phonetic')|list|length }}
+            </div>
+            <div>
+                <strong>创建时间:</strong> {{ wordbook.created_at.strftime('%Y-%m-%d %H:%M') }}
+            </div>
+        </div>
+    </div>
+    
+    {% else %}
+    <div style="text-align: center; padding: 3rem;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📝</div>
+        <h3>暂无单词数据</h3>
+        <p style="color: #666;">该词库中还没有添加任何单词</p>
+        <a href="/admin/upload" class="btn btn-success" style="margin-top: 1rem;">上传单词数据</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleStatus(event, id, currentStatus) {
+    event.preventDefault();
+    const action = currentStatus ? '下架' : '上架';
+    if (!confirm(`确定要${action}此词库吗？`)) {
+        return;
+    }
+    
+    fetch(`/admin/api/wordbooks/${id}/toggle`, {
+        method: 'POST'
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('操作失败：' + data.message);
+        }
+    })
+    .catch(err => {
+        alert('操作失败：' + err.message);
+    });
+}
+
+function exportToExcel() {
+    // 创建Excel数据
+    const data = [
+        ['序号', '英文单词', '音标', '中文翻译']
+    ];
+    
+    // 添加单词数据
+    {% for word in words %}
+    data.push([
+        '{{ word.sequence }}',
+        '{{ word.word }}',
+        '{{ word.phonetic or "" }}',
+        '{{ word.translation }}'
+    ]);
+    {% endfor %}
+    
+    // 创建工作簿
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "单词列表");
+    
+    // 导出文件
+    XLSX.writeFile(wb, "{{ wordbook.name }}_单词列表.xlsx");
+}
+
+// 加载SheetJS库
+const script = document.createElement('script');
+script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+script.onload = function() {
+    // 库加载完成后启用导出按钮
+    document.querySelector('[onclick="exportToExcel()"]').disabled = false;
+};
+document.head.appendChild(script);
+</script>
+{% endblock %}

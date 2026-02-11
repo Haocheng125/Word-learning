@@ -40,7 +40,7 @@
                 <td>{{ wb.pdf_filename or '无' }}</td>
                 <td>{{ wb.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                 <td>
-                    <a href="/admin/download/{{ wb.pdf_filename }}" class="btn" style="background: #3498db;">📄 查看</a>
+                    <a href="/admin/wordbooks/{{ wb.id }}/words" class="btn" style="background: #3498db;">📋 查看单词</a>
                     <button class="btn" style="background: {% if wb.is_active %}#e67e22{% else %}#27ae60{% endif %};" 
                             onclick="toggleStatus({{ wb.id }}, {{ wb.is_active|lower }})">
                         {% if wb.is_active %}🔻 下架{% else %}🔺 上架{% endif %}

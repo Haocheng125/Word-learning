@@ -3,9 +3,7 @@ from werkzeug.utils import secure_filename
 import os
 import traceback
 from datetime import datetime
-import pdfplumber
-import pandas as pd
-from openpyxl.styles import Alignment
+from ..services.pdf_converter import pdf_table_to_excel
 from ..extensions import db
 from ..models.user import User
 from ..models.wordbook import Wordbook
@@ -52,65 +50,7 @@ def upload():
     return render_template('admin/upload.html')
 
 
-def pdf_to_excel(pdf_path, excel_path=None):
-    """将PDF表格转换为Excel
-    
-    Args:
-        pdf_path: PDF文件路径
-        excel_path: 输出的Excel文件路径，如果为None则自动生成
-        
-    Returns:
-        excel_path: 生成的Excel文件路径，失败返回None
-    """
-    if excel_path is None:
-        excel_path = os.path.splitext(pdf_path)[0] + '.xlsx'
-    
-    all_data = []
-    header = None
-    
-    try:
-        with pdfplumber.open(pdf_path) as pdf:
-            for page_num, page in enumerate(pdf.pages, 1):
-                tables = page.extract_tables()
-                if not tables:
-                    continue
-                
-                for table_idx, table in enumerate(tables, 1):
-                    if not table or len(table) == 0:
-                        continue
-                    
-                    # 提取表头
-                    if header is None:
-                        header = [str(cell if cell else '').strip() for cell in table[0]]
-                    
-                    # 处理数据行
-                    for row_idx in range(1, len(table)):
-                        cleaned_row = [str(cell if cell else '').strip() for cell in table[row_idx]]
-                        if any(cleaned_row):  # 如果该行有内容
-                            all_data.append(cleaned_row)
-        
-        if not all_data or not header:
-            current_app.logger.error(f'PDF {pdf_path} 中未找到表格数据')
-            return None
-        
-        # 创建DataFrame并导出到Excel
-        df = pd.DataFrame(all_data, columns=header)
-        
-        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name='数据', index=False)
-            worksheet = writer.sheets['数据']
-            
-            # 设置换行对齐
-            for row in worksheet.iter_rows():
-                for cell in row:
-                    if cell.value and '\n' in str(cell.value):
-                        cell.alignment = Alignment(wrap_text=True)
-        
-        return excel_path
-    
-    except Exception as e:
-        current_app.logger.error(f'PDF转换失败: {str(e)}')
-        return None
+
 
 
 @admin_bp.route('/api/convert-pdf', methods=['POST'])
@@ -147,7 +87,7 @@ def api_convert_pdf():
         pdf_file.save(pdf_filepath)
         
         # 转换PDF为Excel
-        result_excel_path = pdf_to_excel(pdf_filepath, excel_filepath)
+        result_excel_path = pdf_table_to_excel(pdf_filepath, excel_filepath)
         
         if not result_excel_path:
             if os.path.exists(pdf_filepath):
@@ -354,3 +294,16 @@ def download_file(filename):
         )
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 404
+
+
+@admin_bp.route('/wordbooks/<int:wordbook_id>/words')
+def view_wordbook_words(wordbook_id):
+    """查看词库中的单词列表"""
+    wordbook = Wordbook.query.get_or_404(wordbook_id)
+    
+    # 获取该词库的所有单词，按序号排序
+    words = Word.query.filter_by(wordbook_id=wordbook_id).order_by(Word.sequence).all()
+    
+    return render_template('admin/wordbook_words.html',
+                         wordbook=wordbook,
+                         words=words)
