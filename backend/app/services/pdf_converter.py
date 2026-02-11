@@ -4,12 +4,37 @@ import pdfplumber
 from openpyxl.styles import Alignment
 
 def clean_cell_content(cell):
-    """清理单元格内容"""
+    """清理单元格内容，移除Excel不支持的特殊字符"""
     if cell is None:
         return ''
     cell_str = str(cell).strip()
     if not cell_str:
         return ''
+    
+    # 清理音标中的特殊字符，转换为Excel兼容格式
+    # 移除重音符号、长音符号等特殊字符
+    import unicodedata
+    
+    # 标准化Unicode字符
+    cell_str = unicodedata.normalize('NFKD', cell_str)
+    
+    # 移除组合字符（如重音符号）
+    cleaned_chars = []
+    for char in cell_str:
+        # 保留基本ASCII字符和常见中文字符
+        if ord(char) < 128 or (0x4e00 <= ord(char) <= 0x9fff):
+            cleaned_chars.append(char)
+        # 对于音标符号，转换为简单的表示
+        elif char in ['ˌ', 'ː', 'ˈ', '̩', '̯', '̈', '̃', '̄', '̆', '̊']:
+            # 这些是常见的音标修饰符，可以移除或替换
+            continue
+        else:
+            # 其他特殊字符也移除
+            continue
+    
+    cell_str = ''.join(cleaned_chars)
+    
+    # 处理换行
     lines = [line.strip() for line in cell_str.split('\n') if line.strip()]
     return '\n'.join(lines)
 
