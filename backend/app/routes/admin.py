@@ -4,6 +4,7 @@ import os
 import traceback
 from datetime import datetime
 from ..services.pdf_converter import pdf_table_to_excel
+import uuid
 from ..extensions import db
 from ..models.user import User
 from ..models.wordbook import Wordbook
@@ -55,7 +56,7 @@ def upload():
 
 @admin_bp.route('/api/convert-pdf', methods=['POST'])
 def api_convert_pdf():
-    """将PDF转换为Excel，然后上传到词库"""
+    """将PDF转换为Excel，保存到单词库文件夹，然后上传到词库"""
     if 'pdf_file' not in request.files:
         return jsonify({'success': False, 'message': '请上传PDF文件'}), 400
     
@@ -75,18 +76,23 @@ def api_convert_pdf():
     
     # 生成唯一文件名
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    unique_id = str(uuid.uuid4())[:8]
     original_filename = secure_filename(pdf_file.filename)
-    pdf_filename = f"{timestamp}_{original_filename}"
-    excel_filename = f"{timestamp}_{os.path.splitext(original_filename)[0]}.xlsx"
+    pdf_filename = f"{timestamp}_{unique_id}_{original_filename}"
+    excel_filename = f"{timestamp}_{unique_id}_{os.path.splitext(original_filename)[0]}.xlsx"
+    
+    # 创建单词库文件夹
+    wordbooks_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'wordbooks')
+    os.makedirs(wordbooks_folder, exist_ok=True)
     
     pdf_filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], pdf_filename)
-    excel_filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], excel_filename)
+    excel_filepath = os.path.join(wordbooks_folder, excel_filename)
     
     try:
         # 保存PDF文件
         pdf_file.save(pdf_filepath)
         
-        # 转换PDF为Excel
+        # 转换PDF为Excel，保存到单词库文件夹
         result_excel_path = pdf_table_to_excel(pdf_filepath, excel_filepath)
         
         if not result_excel_path:
@@ -138,7 +144,8 @@ def api_convert_pdf():
             'success': True,
             'message': f'成功从PDF转换并导入 {len(words_data)} 个单词',
             'wordbook_id': wordbook.id,
-            'word_count': len(words_data)
+            'word_count': len(words_data),
+            'excel_path': f'/admin/download/wordbooks/{excel_filename}'
         }), 201
     
     except Exception as e:
@@ -289,6 +296,20 @@ def download_file(filename):
     try:
         return send_from_directory(
             current_app.config['UPLOAD_FOLDER'],
+            filename,
+            as_attachment=True
+        )
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 404
+
+
+@admin_bp.route('/download/wordbooks/<filename>')
+def download_wordbook_file(filename):
+    """下载单词库文件夹中的Excel文件"""
+    try:
+        wordbooks_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'wordbooks')
+        return send_from_directory(
+            wordbooks_folder,
             filename,
             as_attachment=True
         )

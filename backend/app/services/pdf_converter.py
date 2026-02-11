@@ -4,42 +4,15 @@ import pdfplumber
 from openpyxl.styles import Alignment
 
 def clean_cell_content(cell):
-    """清理单元格内容，移除Excel不支持的特殊字符"""
     if cell is None:
         return ''
     cell_str = str(cell).strip()
     if not cell_str:
         return ''
-    
-    # 清理音标中的特殊字符，转换为Excel兼容格式
-    # 移除重音符号、长音符号等特殊字符
-    import unicodedata
-    
-    # 标准化Unicode字符
-    cell_str = unicodedata.normalize('NFKD', cell_str)
-    
-    # 移除组合字符（如重音符号）
-    cleaned_chars = []
-    for char in cell_str:
-        # 保留基本ASCII字符和常见中文字符
-        if ord(char) < 128 or (0x4e00 <= ord(char) <= 0x9fff):
-            cleaned_chars.append(char)
-        # 对于音标符号，转换为简单的表示
-        elif char in ['ˌ', 'ː', 'ˈ', '̩', '̯', '̈', '̃', '̄', '̆', '̊']:
-            # 这些是常见的音标修饰符，可以移除或替换
-            continue
-        else:
-            # 其他特殊字符也移除
-            continue
-    
-    cell_str = ''.join(cleaned_chars)
-    
-    # 处理换行
     lines = [line.strip() for line in cell_str.split('\n') if line.strip()]
     return '\n'.join(lines)
 
 def merge_two_rows(row1, row2):
-    """合并两行数据"""
     merged = []
     max_len = max(len(row1), len(row2))
     for j in range(max_len):
@@ -56,15 +29,6 @@ def merge_two_rows(row1, row2):
     return merged
 
 def pdf_table_to_excel(pdf_path, excel_path=None):
-    """将PDF表格转换为Excel
-    
-    Args:
-        pdf_path: PDF文件路径
-        excel_path: 输出的Excel文件路径，如果为None则自动生成
-        
-    Returns:
-        excel_path: 生成的Excel文件路径，失败返回None
-    """
     if excel_path is None:
         excel_path = os.path.splitext(pdf_path)[0] + '.xlsx'
     
@@ -127,7 +91,6 @@ def pdf_table_to_excel(pdf_path, excel_path=None):
     return excel_path
 
 def batch_convert_folder(folder_path):
-    """批量转换文件夹中的PDF文件"""
     pdf_files = [f for f in os.listdir(folder_path) if f.lower().endswith('.pdf')]
     
     if not pdf_files:
