@@ -62,6 +62,19 @@ def merge_two_rows(row1, row2):
     return cleaned_merged
 
 
+def has_any_content(row):
+    """检查行是否有任何非空内容"""
+    return any(cell and str(cell).strip() for cell in row)
+
+
+def clean_dataframe_value(value):
+    """安全清理DataFrame中的值"""
+    if value is None:
+        return ''
+    value_str = str(value)
+    return re.sub(r"[^\w\s\u4e00-\u9fff\[\]\(\)'\".-]", '', value_str)
+
+
 def pdf_table_to_excel(pdf_path, excel_path=None):
     if excel_path is None:
         excel_path = os.path.splitext(pdf_path)[0] + '.xlsx'
@@ -69,81 +82,90 @@ def pdf_table_to_excel(pdf_path, excel_path=None):
     all_data = []
     header = None
     
-    with pdfplumber.open(pdf_path) as pdf:
-        for page_num, page in enumerate(pdf.pages, 1):
-            tables = page.extract_tables()
-            if not tables:
-                continue
-                
-            for table_idx, table in enumerate(tables, 1):
-                if not table or len(table) == 0:
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            for page_num, page in enumerate(pdf.pages, 1):
+                tables = page.extract_tables()
+                if not tables:
                     continue
                     
-                if header is None:
-                    header = [clean_cell_content(cell) for cell in table[0]]
-                
-                i = 1
-                while i < len(table):
-                    cleaned_row = [clean_cell_content(cell) for cell in table[i]]
-                    
-                    if i + 1 < len(table):
-                        cleaned_next_row = [clean_cell_content(cell) for cell in table[i + 1]]
+                for table_idx, table in enumerate(tables, 1):
+                    if not table or len(table) == 0:
+                        continue
                         
-                        has_content = any(cleaned_row)
-                        next_has_content = any(cleaned_next_row)
-                        
-                        if has_content and next_has_content:
-                            merged_row = merge_two_rows(cleaned_row, cleaned_next_row)
-                            if any(merged_row):
-                                row_with_info = merged_row + [page_num, table_idx]
-                                all_data.append(row_with_info)
-                            i += 2
-                            continue
+                    if header is None:
+                        header = [clean_cell_content(cell) for cell in table[0]]
                     
-                    if any(cleaned_row):
-                        row_with_info = cleaned_row + [page_num, table_idx]
-                        all_data.append(row_with_info)
-                    i += 1
+                    i = 1
+                    while i < len(table):
+                        cleaned_row = [clean_cell_content(cell) for cell in table[i]]
+                        
+                        if i + 1 < len(table):
+                            cleaned_next_row = [clean_cell_content(cell) for cell in table[i + 1]]
+                            
+                            has_content = has_any_content(cleaned_row)
+                            next_has_content = has_any_content(cleaned_next_row)
+                            
+                            if has_content and next_has_content:
+                                merged_row = merge_two_rows(cleaned_row, cleaned_next_row)
+                                if has_any_content(merged_row):
+                                    row_with_info = merged_row + [page_num, table_idx]
+                                    all_data.append(row_with_info)
+                                i += 2
+                                continue
+                        
+                        if has_any_content(cleaned_row):
+                            row_with_info = cleaned_row + [page_num, table_idx]
+                            all_data.append(row_with_info)
+                        i += 1
+    except Exception as e:
+        print(f"PDF读取失败: {str(e)}")
+        raise Exception(f"PDF读取失败: {str(e)}")
     
     if not all_data or not header:
         print(f"未在 {os.path.basename(pdf_path)} 中找到表格")
         return None
     
     header_with_info = header + ['页码', '表格序号']
-    df = pd.DataFrame(all_data, columns=header_with_info)
-    
-    # 清理DataFrame中的特殊字符
-    for col in df.columns:
-        df[col] = df[col].apply(lambda x: re.sub(r"[^\w\s\u4e00-\u9fff\[\]\(\)'\".-]", '', str(x)) if pd.notna(x) else x)
     
     try:
-        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name='所有数据', index=False)
-            worksheet = writer.sheets['所有数据']
-            
-            for row in worksheet.iter_rows():
-                for cell in row:
-                    if cell.value and '\n' in str(cell.value):
-                        cell.alignment = Alignment(wrap_text=True)
+        df = pd.DataFrame(all_data, columns=header_with_info)
         
-        print(f"成功将 {os.path.basename(pdf_path)} 转换为: {os.path.basename(excel_path)}")
-        return excel_path
-    except Exception as e:
-        print(f"Excel写入失败: {str(e)}")
-        # 尝试简化数据后再写入
+        # 清理DataFrame中的特殊字符
+        for col in df.columns:
+            df[col] = df[col].apply(clean_dataframe_value)
+        
         try:
-            # 移除所有特殊字符，只保留基本字符
-            for col in df.columns:
-                df[col] = df[col].apply(lambda x: re.sub(r'[^\w\s\u4e00-\u9fff]', '', str(x)) if pd.notna(x) else x)
-            
             with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
                 df.to_excel(writer, sheet_name='所有数据', index=False)
+                worksheet = writer.sheets['所有数据']
+                
+                for row in worksheet.iter_rows():
+                    for cell in row:
+                        if cell.value and '\n' in str(cell.value):
+                            cell.alignment = Alignment(wrap_text=True)
             
-            print(f"使用简化数据成功转换: {os.path.basename(excel_path)}")
+            print(f"成功将 {os.path.basename(pdf_path)} 转换为: {os.path.basename(excel_path)}")
             return excel_path
-        except Exception as e2:
-            print(f"简化数据写入也失败: {str(e2)}")
-            raise Exception(f"无法创建Excel文件: {str(e2)}")
+        except Exception as e:
+            print(f"Excel写入失败: {str(e)}")
+            # 尝试简化数据后再写入
+            try:
+                # 移除所有特殊字符，只保留基本字符
+                for col in df.columns:
+                    df[col] = df[col].apply(lambda x: re.sub(r'[^\w\s\u4e00-\u9fff]', '', str(x)) if x is not None else x)
+                
+                with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+                    df.to_excel(writer, sheet_name='所有数据', index=False)
+                
+                print(f"使用简化数据成功转换: {os.path.basename(excel_path)}")
+                return excel_path
+            except Exception as e2:
+                print(f"简化数据写入也失败: {str(e2)}")
+                raise Exception(f"无法创建Excel文件: {str(e2)}")
+    except Exception as e:
+        print(f"DataFrame创建失败: {str(e)}")
+        raise Exception(f"数据处理失败: {str(e)}")
 
 
 @admin_bp.route('/')
