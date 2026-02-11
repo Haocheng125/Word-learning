@@ -1,14 +1,21 @@
 {% extends "admin/base.html" %}
 
-{% block title %}上传 Excel{% endblock %}
+{% block title %}上传词库文件{% endblock %}
 
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-    <h1>📤 上传 Excel 词库</h1>
+    <h1>📤 上传词库文件</h1>
     <a href="/admin/wordbooks" class="btn">返回词库列表</a>
 </div>
 
-<div class="card">
+<!-- 标签页导航 -->
+<div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 2px solid #ecf0f1;">
+    <button onclick="switchTab('excel')" id="excelTab" style="padding: 1rem; background: #3498db; color: white; border: none; cursor: pointer; border-bottom: 3px solid #2c3e50;">📊 Excel 上传</button>
+    <button onclick="switchTab('pdf')" id="pdfTab" style="padding: 1rem; background: #ecf0f1; color: #333; border: none; cursor: pointer;">📄 PDF 转换</button>
+</div>
+
+<!-- Excel 上传表单 -->
+<div id="excelForm" class="card">
     <form id="uploadForm" enctype="multipart/form-data">
         <div class="form-group">
             <label for="name">词库名称 *</label>
@@ -41,8 +48,44 @@
     </form>
 </div>
 
+<!-- PDF 上传表单 -->
+<div id="pdfForm" class="card" style="display: none;">
+    <form id="pdfUploadForm" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="pdf_name">词库名称 *</label>
+            <input type="text" id="pdf_name" name="pdf_name" required placeholder="例如：大学英语四级词汇">
+        </div>
+        
+        <div class="form-group">
+            <label for="pdf_description">描述</label>
+            <textarea id="pdf_description" name="pdf_description" rows="3" placeholder="简单描述这个词库的内容和用途"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="pdf_file">选择 PDF 文件 *</label>
+            <input type="file" id="pdf_file" name="pdf_file" accept=".pdf" required>
+            <small style="color: #7f8c8d; display: block; margin-top: 0.5rem;">
+                支持 .pdf 格式，PDF 需包含表格数据（包含英文单词、音标、中文释义等列）
+            </small>
+        </div>
+        
+        <div id="pdfProgress" style="display: none; margin: 1rem 0;">
+            <div style="background: #ecf0f1; border-radius: 4px; overflow: hidden;">
+                <div id="pdfProgressBar" style="background: #27ae60; height: 30px; width: 0%; transition: width 0.3s; text-align: center; line-height: 30px; color: white;">
+                    0%
+                </div>
+            </div>
+            <p id="pdfStatusText" style="margin-top: 0.5rem; color: #7f8c8d;">正在处理...</p>
+        </div>
+        
+        <button type="submit" class="btn btn-success" id="pdfSubmitBtn">PDF 转换并导入</button>
+    </form>
+</div>
+
+<!-- 使用说明 -->
 <div class="card">
     <h2>📋 使用说明</h2>
+    <h3>Excel 上传</h3>
     <ul style="line-height: 2;">
         <li>支持上传 Excel 文件（.xlsx 或 .xls）</li>
         <li>第一列：英文单词（Word）</li>
@@ -51,11 +94,49 @@
         <li>文件大小限制：50MB</li>
         <li>上传后会自动显示解析结果</li>
     </ul>
+    
+    <h3 style="margin-top: 1.5rem;">PDF 转换</h3>
+    <ul style="line-height: 2;">
+        <li>支持上传 PDF 文件（.pdf）</li>
+        <li>PDF 需包含表格数据</li>
+        <li>推荐格式：英文 | 音标 | 中文 的表格结构</li>
+        <li>系统会自动提取表格 → 转换为 Excel → 导入词库</li>
+        <li>文件大小限制：50MB</li>
+    </ul>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// 标签页切换
+function switchTab(tab) {
+    const excelForm = document.getElementById('excelForm');
+    const pdfForm = document.getElementById('pdfForm');
+    const excelTab = document.getElementById('excelTab');
+    const pdfTab = document.getElementById('pdfTab');
+    
+    if (tab === 'excel') {
+        excelForm.style.display = 'block';
+        pdfForm.style.display = 'none';
+        excelTab.style.background = '#3498db';
+        excelTab.style.color = 'white';
+        excelTab.style.borderBottom = '3px solid #2c3e50';
+        pdfTab.style.background = '#ecf0f1';
+        pdfTab.style.color = '#333';
+        pdfTab.style.border = 'none';
+    } else {
+        excelForm.style.display = 'none';
+        pdfForm.style.display = 'block';
+        excelTab.style.background = '#ecf0f1';
+        excelTab.style.color = '#333';
+        excelTab.style.border = 'none';
+        pdfTab.style.background = '#3498db';
+        pdfTab.style.color = 'white';
+        pdfTab.style.borderBottom = '3px solid #2c3e50';
+    }
+}
+
+// Excel 上传处理
 document.getElementById('uploadForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -118,6 +199,72 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
         document.getElementById('submitBtn').disabled = false;
         document.getElementById('submitBtn').textContent = '开始上传并解析';
         alert('上传失败：' + error.message);
+    }
+});
+
+// PDF 上传处理
+document.getElementById('pdfUploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('pdf_name').value.trim();
+    const description = document.getElementById('pdf_description').value.trim();
+    const fileInput = document.getElementById('pdf_file');
+    const file = fileInput.files[0];
+    
+    if (!name || !file) {
+        alert('请填写词库名称并选择 PDF 文件');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('description', description);
+    formData.append('pdf_file', file);
+    
+    // 显示进度条
+    document.getElementById('pdfProgress').style.display = 'block';
+    document.getElementById('pdfSubmitBtn').disabled = true;
+    document.getElementById('pdfSubmitBtn').textContent = '处理中...';
+    
+    // 模拟进度条动画
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        if (progress < 90) {
+            progress += Math.random() * 10;
+            document.getElementById('pdfProgressBar').style.width = progress + '%';
+            document.getElementById('pdfProgressBar').textContent = Math.floor(progress) + '%';
+        }
+    }, 500);
+    
+    try {
+        const response = await fetch('/admin/api/convert-pdf', {
+            method: 'POST',
+            body: formData
+        });
+        
+        clearInterval(progressInterval);
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('pdfProgressBar').style.width = '100%';
+            document.getElementById('pdfProgressBar').textContent = '100%';
+            document.getElementById('pdfStatusText').textContent = `✅ ${data.message}`;
+            document.getElementById('pdfStatusText').style.color = '#27ae60';
+            
+            alert(`PDF转换成功！共导入 ${data.word_count} 个单词\n词库已创建，默认为下架状态，请在词库列表中手动上架`);
+            setTimeout(() => {
+                window.location.href = '/admin/wordbooks';
+            }, 1500);
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (error) {
+        clearInterval(progressInterval);
+        document.getElementById('pdfStatusText').textContent = '❌ ' + error.message;
+        document.getElementById('pdfStatusText').style.color = '#e74c3c';
+        document.getElementById('pdfSubmitBtn').disabled = false;
+        document.getElementById('pdfSubmitBtn').textContent = 'PDF 转换并导入';
+        alert('处理失败：' + error.message);
     }
 });
 </script>

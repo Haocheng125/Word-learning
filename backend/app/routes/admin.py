@@ -3,6 +3,9 @@ from werkzeug.utils import secure_filename
 import os
 import traceback
 from datetime import datetime
+import pdfplumber
+import pandas as pd
+from openpyxl.styles import Alignment
 from ..extensions import db
 from ..models.user import User
 from ..models.wordbook import Wordbook
@@ -48,6 +51,170 @@ def upload():
     """Excel上传页面"""
     return render_template('admin/upload.html')
 
+
+def pdf_to_excel(pdf_path, excel_path=None):
+    """将PDF表格转换为Excel
+    
+    Args:
+        pdf_path: PDF文件路径
+        excel_path: 输出的Excel文件路径，如果为None则自动生成
+        
+    Returns:
+        excel_path: 生成的Excel文件路径，失败返回None
+    """
+    if excel_path is None:
+        excel_path = os.path.splitext(pdf_path)[0] + '.xlsx'
+    
+    all_data = []
+    header = None
+    
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            for page_num, page in enumerate(pdf.pages, 1):
+                tables = page.extract_tables()
+                if not tables:
+                    continue
+                
+                for table_idx, table in enumerate(tables, 1):
+                    if not table or len(table) == 0:
+                        continue
+                    
+                    # 提取表头
+                    if header is None:
+                        header = [str(cell if cell else '').strip() for cell in table[0]]
+                    
+                    # 处理数据行
+                    for row_idx in range(1, len(table)):
+                        cleaned_row = [str(cell if cell else '').strip() for cell in table[row_idx]]
+                        if any(cleaned_row):  # 如果该行有内容
+                            all_data.append(cleaned_row)
+        
+        if not all_data or not header:
+            current_app.logger.error(f'PDF {pdf_path} 中未找到表格数据')
+            return None
+        
+        # 创建DataFrame并导出到Excel
+        df = pd.DataFrame(all_data, columns=header)
+        
+        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='数据', index=False)
+            worksheet = writer.sheets['数据']
+            
+            # 设置换行对齐
+            for row in worksheet.iter_rows():
+                for cell in row:
+                    if cell.value and '\n' in str(cell.value):
+                        cell.alignment = Alignment(wrap_text=True)
+        
+        return excel_path
+    
+    except Exception as e:
+        current_app.logger.error(f'PDF转换失败: {str(e)}')
+        return None
+
+
+@admin_bp.route('/api/convert-pdf', methods=['POST'])
+def api_convert_pdf():
+    """将PDF转换为Excel，然后上传到词库"""
+    if 'pdf_file' not in request.files:
+        return jsonify({'success': False, 'message': '请上传PDF文件'}), 400
+    
+    pdf_file = request.files['pdf_file']
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    
+    if not pdf_file.filename:
+        return jsonify({'success': False, 'message': '请选择文件'}), 400
+    
+    if not name:
+        return jsonify({'success': False, 'message': '请输入单词书名称'}), 400
+    
+    # 验证文件格式
+    if not pdf_file.filename.lower().endswith('.pdf'):
+        return jsonify({'success': False, 'message': '只支持PDF文件（.pdf）'}), 400
+    
+    # 生成唯一文件名
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    original_filename = secure_filename(pdf_file.filename)
+    pdf_filename = f"{timestamp}_{original_filename}"
+    excel_filename = f"{timestamp}_{os.path.splitext(original_filename)[0]}.xlsx"
+    
+    pdf_filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], pdf_filename)
+    excel_filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], excel_filename)
+    
+    try:
+        # 保存PDF文件
+        pdf_file.save(pdf_filepath)
+        
+        # 转换PDF为Excel
+        result_excel_path = pdf_to_excel(pdf_filepath, excel_filepath)
+        
+        if not result_excel_path:
+            if os.path.exists(pdf_filepath):
+                os.remove(pdf_filepath)
+            return jsonify({
+                'success': False, 
+                'message': 'PDF中未找到有效的表格数据，请确保PDF包含表格信息'
+            }), 400
+        
+        # 解析Excel
+        words_data = parse_excel(excel_filepath)
+        
+        if not words_data:
+            if os.path.exists(pdf_filepath):
+                os.remove(pdf_filepath)
+            if os.path.exists(excel_filepath):
+                os.remove(excel_filepath)
+            return jsonify({
+                'success': False, 
+                'message': 'Excel中未找到有效的单词数据'
+            }), 400
+        
+        # 创建单词书
+        wordbook = Wordbook(
+            name=name,
+            description=description,
+            pdf_filename=pdf_filename,
+            word_count=len(words_data),
+            is_active=False  # 默认下架状态
+        )
+        db.session.add(wordbook)
+        db.session.flush()
+        
+        # 批量插入单词
+        for seq, (word, phonetic, translation) in enumerate(words_data, 1):
+            word_obj = Word(
+                wordbook_id=wordbook.id,
+                word=word,
+                phonetic=phonetic,
+                translation=translation,
+                sequence=seq
+            )
+            db.session.add(word_obj)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'成功从PDF转换并导入 {len(words_data)} 个单词',
+            'wordbook_id': wordbook.id,
+            'word_count': len(words_data)
+        }), 201
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'PDF转换上传失败: {str(e)}\n{traceback.format_exc()}')
+        
+        # 清理文件
+        if os.path.exists(pdf_filepath):
+            os.remove(pdf_filepath)
+        if os.path.exists(excel_filepath):
+            os.remove(excel_filepath)
+        
+        return jsonify({
+            'success': False, 
+            'message': f'处理失败: {str(e)}'
+        }), 500
 
 @admin_bp.route('/api/upload-excel', methods=['POST'])
 def api_upload_excel():
