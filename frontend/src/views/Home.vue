@@ -6,6 +6,7 @@
         <nav>
           <router-link to="/">首页</router-link>
           <router-link to="/vocabulary">生词本</router-link>
+          <router-link to="/download">桌面版</router-link>
 
           <span class="user-info">{{ authStore.user?.username }}</span>
           <button class="btn btn-secondary btn-sm" @click="handleLogout">退出</button>

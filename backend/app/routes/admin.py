@@ -471,6 +471,31 @@ def download_wordbook_file(filename):
         return jsonify({'success': False, 'message': str(e)}), 404
 
 
+@admin_bp.route('/download/desktop-app')
+def download_desktop_app():
+    """下载桌面版应用"""
+    try:
+        downloads_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'downloads')
+        os.makedirs(downloads_folder, exist_ok=True)
+        
+        exe_filename = '单词学习助手.exe'
+        exe_path = os.path.join(downloads_folder, exe_filename)
+        
+        if os.path.exists(exe_path):
+            return send_from_directory(
+                downloads_folder,
+                exe_filename,
+                as_attachment=True
+            )
+        else:
+            return jsonify({
+                'success': False,
+                'message': '桌面版应用暂未打包，请先运行打包脚本'
+            }), 404
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @admin_bp.route('/wordbooks/<int:wordbook_id>/words')
 def view_wordbook_words(wordbook_id):
     """查看词库中的单词列表"""

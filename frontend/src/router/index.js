@@ -30,6 +30,12 @@ const routes = [
     name: 'Vocabulary',
     component: () => import('../views/Vocabulary.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/download',
+    name: 'Download',
+    component: () => import('../views/Download.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
