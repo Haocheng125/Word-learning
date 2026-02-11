@@ -114,8 +114,8 @@ def parse_excel(excel_path):
                             word = word_str
                     
                     # 验证单词是否为英文（允许空格、连字符和常见的特殊字符）
-                    # 放宽限制，允许重音符和其他特殊字符（如 El Niño）
-                    if not re.match(r'^[a-zA-ZÀ-ſ\s\-]+$', word):
+                    # 放宽限制，允许重音符、连字符和其他特殊字符（如 eco-friendly, El Niño）
+                    if not re.match(r'^[a-zA-ZÀ-ſ\s\-\']+$', word):
                         logger.warning(f'第 {row_idx} 行：单词包含非法字符，已跳过: {word}')
                         continue
                     

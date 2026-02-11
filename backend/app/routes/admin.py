@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, current_app, send_from_directory
 from werkzeug.utils import secure_filename
 import os
+import re
 import traceback
 from datetime import datetime
 import uuid
@@ -24,7 +25,13 @@ def clean_cell_content(cell):
     if not cell_str:
         return ''
     lines = [line.strip() for line in cell_str.split('\n') if line.strip()]
-    return '\n'.join(lines)
+    # 清理可能导致Excel问题的特殊字符
+    cleaned_lines = []
+    for line in lines:
+        # 移除可能导致Excel错误的特殊字符
+        cleaned_line = re.sub(r"[^\w\s\u4e00-\u9fff\[\]\(\)'\".-]", '', line)
+        cleaned_lines.append(cleaned_line)
+    return '\n'.join(cleaned_lines)
 
 
 def merge_two_rows(row1, row2):
@@ -41,7 +48,18 @@ def merge_two_rows(row1, row2):
             merged.append(cell2)
         else:
             merged.append('')
-    return merged
+    
+    # 清理合并后的数据
+    cleaned_merged = []
+    for cell in merged:
+        if cell:
+            # 清理特殊字符
+            cleaned_cell = re.sub(r"[^\w\s\u4e00-\u9fff\[\]\(\)'\".-]", '', str(cell))
+            cleaned_merged.append(cleaned_cell)
+        else:
+            cleaned_merged.append('')
+    
+    return cleaned_merged
 
 
 def pdf_table_to_excel(pdf_path, excel_path=None):
@@ -94,17 +112,38 @@ def pdf_table_to_excel(pdf_path, excel_path=None):
     header_with_info = header + ['页码', '表格序号']
     df = pd.DataFrame(all_data, columns=header_with_info)
     
-    with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='所有数据', index=False)
-        worksheet = writer.sheets['所有数据']
-        
-        for row in worksheet.iter_rows():
-            for cell in row:
-                if cell.value and '\n' in str(cell.value):
-                    cell.alignment = Alignment(wrap_text=True)
+    # 清理DataFrame中的特殊字符
+    for col in df.columns:
+        df[col] = df[col].apply(lambda x: re.sub(r"[^\w\s\u4e00-\u9fff\[\]\(\)'\".-]", '', str(x)) if pd.notna(x) else x)
     
-    print(f"成功将 {os.path.basename(pdf_path)} 转换为: {os.path.basename(excel_path)}")
-    return excel_path
+    try:
+        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='所有数据', index=False)
+            worksheet = writer.sheets['所有数据']
+            
+            for row in worksheet.iter_rows():
+                for cell in row:
+                    if cell.value and '\n' in str(cell.value):
+                        cell.alignment = Alignment(wrap_text=True)
+        
+        print(f"成功将 {os.path.basename(pdf_path)} 转换为: {os.path.basename(excel_path)}")
+        return excel_path
+    except Exception as e:
+        print(f"Excel写入失败: {str(e)}")
+        # 尝试简化数据后再写入
+        try:
+            # 移除所有特殊字符，只保留基本字符
+            for col in df.columns:
+                df[col] = df[col].apply(lambda x: re.sub(r'[^\w\s\u4e00-\u9fff]', '', str(x)) if pd.notna(x) else x)
+            
+            with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='所有数据', index=False)
+            
+            print(f"使用简化数据成功转换: {os.path.basename(excel_path)}")
+            return excel_path
+        except Exception as e2:
+            print(f"简化数据写入也失败: {str(e2)}")
+            raise Exception(f"无法创建Excel文件: {str(e2)}")
 
 
 @admin_bp.route('/')
