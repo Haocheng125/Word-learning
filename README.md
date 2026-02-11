@@ -3,7 +3,7 @@
 一个基于 Flask + Vue3 的单词学习网站，支持 Excel 词库导入、在线学习和生词本管理。
 
 > 🌐 **在线访问**
-> - 前端（用户端）: https://incomparable-llama-827043.netlify.app/
+> - 前端（用户端）: https://21fe87f2.word-learning.pages.dev/
 > - 后端（管理端）: https://lain05.zeabur.app/admin
 >
 > 🖥️ **本地运行地址**
