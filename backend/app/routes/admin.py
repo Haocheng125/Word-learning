@@ -229,10 +229,11 @@ def upload():
 
 
 def extract_words_from_pdf(pdf_path):
-    """直接从PDF提取单词数据，识别Word和Meaning列"""
-    all_rows = []
+    """直接从PDF读取Word和Meaning列"""
+    words_data = []
     word_col_idx = 0
     meaning_col_idx = 1
+    header_found = False
     
     try:
         with pdfplumber.open(pdf_path) as pdf:
@@ -245,14 +246,15 @@ def extract_words_from_pdf(pdf_path):
                     if not table or len(table) == 0:
                         continue
                         
-                    # 第一页的第一个表格，尝试识别表头
-                    if page_num == 1 and table_idx == 1 and len(table) > 0:
+                    # 第一页的第一个表格，识别表头
+                    if not header_found and page_num == 1 and table_idx == 1 and len(table) > 0:
                         header_row = [str(cell).lower().strip() if cell else '' for cell in table[0]]
                         
                         # 查找 Word 列
                         for idx, cell in enumerate(header_row):
                             if 'word' in cell or '单词' in cell:
                                 word_col_idx = idx
+                                header_found = True
                                 break
                         
                         # 查找 Meaning 列
@@ -260,63 +262,57 @@ def extract_words_from_pdf(pdf_path):
                             if 'meaning' in cell or '释义' in cell or '中文' in cell:
                                 meaning_col_idx = idx
                                 break
+                        
+                        # 从第二行开始是数据
+                        start_row = 1
+                    else:
+                        start_row = 0
                     
-                    # 处理数据行
-                    i = 0
-                    while i < len(table):
-                        cleaned_row = [clean_cell_content(cell) for cell in table[i]]
+                    # 读取数据行
+                    for i in range(start_row, len(table)):
+                        row = table[i]
+                        if not row or len(row) <= max(word_col_idx, meaning_col_idx):
+                            continue
                         
-                        if i + 1 < len(table):
-                            cleaned_next_row = [clean_cell_content(cell) for cell in table[i + 1]]
-                            
-                            has_content = has_any_content(cleaned_row)
-                            next_has_content = has_any_content(cleaned_next_row)
-                            
-                            if has_content and next_has_content:
-                                merged_row = merge_two_rows(cleaned_row, cleaned_next_row)
-                                if has_any_content(merged_row):
-                                    all_rows.append(merged_row)
-                                i += 2
-                                continue
+                        word_cell = row[word_col_idx]
+                        meaning_cell = row[meaning_col_idx]
                         
-                        if has_any_content(cleaned_row):
-                            all_rows.append(cleaned_row)
-                        i += 1
+                        if not word_cell or not meaning_cell:
+                            continue
+                        
+                        word_str = clean_cell_content(word_cell)
+                        meaning_str = clean_cell_content(meaning_cell)
+                        
+                        if not word_str or not meaning_str:
+                            continue
+                        
+                        # 解析单词和音标
+                        word = ''
+                        phonetic = ''
+                        
+                        if '\n' in word_str:
+                            parts = word_str.split('\n', 1)
+                            word = parts[0].strip()
+                            if len(parts) > 1:
+                                phonetic_part = parts[1].strip()
+                                phonetic_match = re.search(r'\[([^\]]+)\]', phonetic_part)
+                                if phonetic_match:
+                                    phonetic = phonetic_match.group(1)
+                        else:
+                            phonetic_match = re.search(r'([a-zA-Z\s\-]+)\s*\[([^\]]+)\]', word_str)
+                            if phonetic_match:
+                                word = phonetic_match.group(1).strip()
+                                phonetic = phonetic_match.group(2).strip()
+                            else:
+                                word = word_str
+                        
+                        # 验证单词
+                        if word and re.match(r'^[a-zA-ZÀ-ſ\s\-\']+$', word):
+                            words_data.append((word, phonetic, meaning_str))
+    
     except Exception as e:
         print(f"PDF读取失败: {str(e)}")
         raise Exception(f"PDF读取失败: {str(e)}")
-    
-    # 提取单词数据
-    words_data = []
-    for row in all_rows:
-        if len(row) > max(word_col_idx, meaning_col_idx):
-            word_part = str(row[word_col_idx]) if row[word_col_idx] else ''
-            meaning_part = str(row[meaning_col_idx]) if row[meaning_col_idx] else ''
-            
-            if word_part and meaning_part:
-                # 解析单词和音标
-                word = ''
-                phonetic = ''
-                
-                if '\n' in word_part:
-                    parts = word_part.split('\n', 1)
-                    word = parts[0].strip()
-                    if len(parts) > 1:
-                        phonetic_part = parts[1].strip()
-                        phonetic_match = re.search(r'\[([^\]]+)\]', phonetic_part)
-                        if phonetic_match:
-                            phonetic = phonetic_match.group(1)
-                else:
-                    phonetic_match = re.search(r'([a-zA-Z\s\-]+)\s*\[([^\]]+)\]', word_part)
-                    if phonetic_match:
-                        word = phonetic_match.group(1).strip()
-                        phonetic = phonetic_match.group(2).strip()
-                    else:
-                        word = word_part
-                
-                # 验证单词
-                if word and re.match(r'^[a-zA-ZÀ-ſ\s\-\']+$', word):
-                    words_data.append((word, phonetic, meaning_part))
     
     return words_data
 

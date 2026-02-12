@@ -11,7 +11,7 @@
 <!-- 标签页导航 -->
 <div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 2px solid #ecf0f1;">
     <button onclick="switchTab('excel')" id="excelTab" style="padding: 1rem; background: #3498db; color: white; border: none; cursor: pointer; border-bottom: 3px solid #2c3e50;">📊 Excel 上传</button>
-    <button onclick="switchTab('pdf')" id="pdfTab" style="padding: 1rem; background: #ecf0f1; color: #333; border: none; cursor: pointer;">📄 PDF 转换</button>
+    <button onclick="switchTab('pdf')" id="pdfTab" style="padding: 1rem; background: #ecf0f1; color: #333; border: none; cursor: pointer;">📄 PDF 读取</button>
 </div>
 
 <!-- Excel 上传表单 -->
@@ -78,7 +78,7 @@
             <p id="pdfStatusText" style="margin-top: 0.5rem; color: #7f8c8d;">正在处理...</p>
         </div>
         
-        <button type="submit" class="btn btn-success" id="pdfSubmitBtn">PDF 转换并导入</button>
+        <button type="submit" class="btn btn-success" id="pdfSubmitBtn">PDF 读取并导入</button>
     </form>
 </div>
 
@@ -95,12 +95,12 @@
         <li>上传后会自动显示解析结果</li>
     </ul>
     
-    <h3 style="margin-top: 1.5rem;">PDF 转换</h3>
+    <h3 style="margin-top: 1.5rem;">PDF 读取</h3>
     <ul style="line-height: 2;">
         <li>支持上传 PDF 文件（.pdf）</li>
         <li>PDF 需包含表格数据</li>
-        <li>推荐格式：英文 | 音标 | 中文 的表格结构</li>
-        <li>系统会自动提取表格 → 转换为 Excel → 导入词库</li>
+        <li>表格需包含 Word 列（英文单词）和 Meaning 列（中文释义）</li>
+        <li>系统会自动读取 Word 和 Meaning 列，直接导入词库</li>
         <li>文件大小限制：50MB</li>
     </ul>
 </div>
@@ -251,7 +251,7 @@ document.getElementById('pdfUploadForm').addEventListener('submit', async functi
             document.getElementById('pdfStatusText').textContent = `✅ ${data.message}`;
             document.getElementById('pdfStatusText').style.color = '#27ae60';
             
-            alert(`PDF转换成功！共导入 ${data.word_count} 个单词\n词库已创建，默认为下架状态，请在词库列表中手动上架`);
+            alert(`PDF读取成功！共导入 ${data.word_count} 个单词\n词库已创建，默认为下架状态，请在词库列表中手动上架`);
             setTimeout(() => {
                 window.location.href = '/admin/wordbooks';
             }, 1500);
