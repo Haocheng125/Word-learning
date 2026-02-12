@@ -306,8 +306,8 @@ def extract_words_from_pdf(pdf_path):
                             else:
                                 word = word_str
                         
-                        # 验证单词
-                        if word and re.match(r'^[a-zA-ZÀ-ſ\s\-\']+$', word):
+                        # 只要单词不为空就添加
+                        if word:
                             words_data.append((word, phonetic, meaning_str))
     
     except Exception as e:
