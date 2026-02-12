@@ -7,9 +7,9 @@
 > - 后端（管理端）: https://lain05.zeabur.app/admin
 >
 > 🖥️ **本地运行地址**
-> - 前端（用户端）: http://localhost:8040
+> - 前端（用户端）: http://localhost:4000
 > - 后端（管理端）: http://localhost:5000/admin
-> - 桌面版下载: http://localhost:8040/download
+> - 桌面版下载: http://localhost:4000/download
 
 ## 📁 项目结构
 
@@ -85,7 +85,7 @@ docker-compose up -d
 ```
 
 访问地址：
-- 前端: http://localhost:80
+- 前端: http://localhost:4000
 - 后端: http://localhost:5000/admin
 
 ## ✨ 主要功能
@@ -261,7 +261,7 @@ docker-compose down -v
 ```
 
 访问地址：
-- 前端: http://localhost:80
+- 前端: http://localhost:4000
 - 后端: http://localhost:5000/admin
 
 ### 生产部署
