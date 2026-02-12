@@ -25,11 +25,17 @@ def clean_cell_content(cell):
     if not cell_str:
         return ''
     lines = [line.strip() for line in cell_str.split('\n') if line.strip()]
-    # 清理可能导致Excel问题的特殊字符
+    # 保留更多有用的特殊字符
     cleaned_lines = []
     for line in lines:
-        # 移除可能导致Excel错误的特殊字符
-        cleaned_line = re.sub(r"[^\w\s\u4e00-\u9fff\[\]\(\)'\".-]", '', line)
+        # 保留：字母、数字、空格、中文、常用符号、音标、连字符等
+        # 允许的字符：
+        # \w - 单词字符
+        # \s - 空白字符
+        # \u4e00-\u9fff - 中文
+        # \[\]\(\)'\".-;:,!?，。！？；：""''（）【】——-
+        # 音标符号：ˈˌːˌ
+        cleaned_line = re.sub(r"[^\w\s\u4e00-\u9fff\[\]\(\)'\".\-;:,!?，。！？；：\"\"''（）【】——ˈˌːˌ]", '', line)
         cleaned_lines.append(cleaned_line)
     return '\n'.join(cleaned_lines)
 
@@ -40,8 +46,19 @@ def merge_two_rows(row1, row2):
     for j in range(max_len):
         cell1 = row1[j] if j < len(row1) else ''
         cell2 = row2[j] if j < len(row2) else ''
+        
+        # 处理跨行连字符的单词（例如：hel-lo 合并为 hello）
         if cell1 and cell2:
-            merged.append(f'{cell1}\n{cell2}')
+            cell1_str = str(cell1).strip()
+            cell2_str = str(cell2).strip()
+            
+            # 检查是否是跨行连字符单词
+            if cell1_str.endswith('-') or cell1_str.endswith('—'):
+                # 移除连字符，合并单词
+                merged_word = cell1_str[:-1] + cell2_str
+                merged.append(merged_word)
+            else:
+                merged.append(f'{cell1}\n{cell2}')
         elif cell1:
             merged.append(cell1)
         elif cell2:
@@ -53,8 +70,8 @@ def merge_two_rows(row1, row2):
     cleaned_merged = []
     for cell in merged:
         if cell:
-            # 清理特殊字符
-            cleaned_cell = re.sub(r"[^\w\s\u4e00-\u9fff\[\]\(\)'\".-]", '', str(cell))
+            # 清理特殊字符，保留更多有用字符
+            cleaned_cell = re.sub(r"[^\w\s\u4e00-\u9fff\[\]\(\)'\".\-;:,!?，。！？；：\"\"''（）【】——ˈˌːˌ]", '', str(cell))
             cleaned_merged.append(cleaned_cell)
         else:
             cleaned_merged.append('')
@@ -72,7 +89,7 @@ def clean_dataframe_value(value):
     if value is None:
         return ''
     value_str = str(value)
-    return re.sub(r"[^\w\s\u4e00-\u9fff\[\]\(\)'\".-]", '', value_str)
+    return re.sub(r"[^\w\s\u4e00-\u9fff\[\]\(\)'\".\-;:,!?，。！？；：\"\"''（）【】——ˈˌːˌ]", '', value_str)
 
 
 def pdf_table_to_excel(pdf_path, excel_path=None):
