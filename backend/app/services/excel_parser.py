@@ -1,4 +1,3 @@
-
 import openpyxl
 import logging
 import re
@@ -24,20 +23,17 @@ def parse_excel(excel_path):
         meaning_col_idx = 2
         start_row = 1
         
-        # 检查第一行是否为表头
-        if sheet.max_row &gt; 0:
+        if sheet.max_row > 0:
             first_row = list(sheet.iter_rows(min_row=1, max_row=1, values_only=True))[0]
-            if first_row and len(first_row) &gt;= 2:
+            if first_row and len(first_row) >= 2:
                 first_row_str = [str(cell or '').lower().strip() for cell in first_row]
                 
-                # 查找 Word 列
                 for idx, cell in enumerate(first_row_str):
                     if 'word' in cell or '单词' in cell:
                         word_col_idx = idx + 1
                         start_row = 2
                         break
                 
-                # 查找 Meaning 列
                 for idx, cell in enumerate(first_row_str):
                     if 'meaning' in cell or '释义' in cell or '中文' in cell:
                         meaning_col_idx = idx + 1
@@ -45,16 +41,15 @@ def parse_excel(excel_path):
         
         logger.info(f'Word 列: {word_col_idx}, Meaning 列: {meaning_col_idx}, 从第 {start_row} 行开始')
         
-        # 读取数据行
         for row_idx in range(start_row, sheet.max_row + 1):
             try:
                 row = list(sheet.iter_rows(min_row=row_idx, max_row=row_idx, values_only=True))[0]
                 
-                if not row or len(row) &lt;= max(word_col_idx, meaning_col_idx):
+                if not row or len(row) <= max(word_col_idx, meaning_col_idx):
                     continue
                 
-                word_cell = row[word_col_idx - 1] if (word_col_idx - 1) &lt; len(row) else None
-                meaning_cell = row[meaning_col_idx - 1] if (meaning_col_idx - 1) &lt; len(row) else None
+                word_cell = row[word_col_idx - 1] if (word_col_idx - 1) < len(row) else None
+                meaning_cell = row[meaning_col_idx - 1] if (meaning_col_idx - 1) < len(row) else None
                 
                 if not word_cell or not meaning_cell:
                     continue
@@ -65,14 +60,13 @@ def parse_excel(excel_path):
                 if not word_str or not meaning_str:
                     continue
                 
-                # 解析单词和音标
                 word = ''
                 phonetic = ''
                 
                 if '\n' in word_str:
                     parts = word_str.split('\n', 1)
                     word = parts[0].strip()
-                    if len(parts) &gt; 1:
+                    if len(parts) > 1:
                         phonetic_part = parts[1].strip()
                         phonetic_match = re.search(r'\[([^\]]+)\]', phonetic_part)
                         if phonetic_match:
@@ -85,10 +79,9 @@ def parse_excel(excel_path):
                     else:
                         word = word_str
                 
-                # 只要单词不为空就添加
                 if word:
                     words.append((word, phonetic, meaning_str))
-                    logger.debug(f'解析成功 #{len(words)}: {word} [{phonetic}] -&gt; {meaning_str[:50]}...')
+                    logger.debug(f'解析成功 #{len(words)}: {word} [{phonetic}] -> {meaning_str[:50]}...')
             
             except Exception as e:
                 logger.warning(f'解析第 {row_idx} 行失败: {str(e)}')
@@ -104,4 +97,3 @@ def parse_excel(excel_path):
         raise Exception(f'Excel解析失败: {str(e)}')
     
     return words
-
