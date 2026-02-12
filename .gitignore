@@ -28,8 +28,7 @@ Thumbs.db
 npm-debug.log*
 
 # Uploads
-backend/uploads/*.xlsx
-backend/uploads/*.xls
+backend/uploads/
 
 # Build
 frontend/dist/

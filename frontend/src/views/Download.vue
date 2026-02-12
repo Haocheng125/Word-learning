@@ -66,31 +66,103 @@
           </div>
 
           <div class="instructions-card card">
-            <h3>📋 安装说明</h3>
-            <ol>
-              <li>点击上方按钮下载安装包</li>
-              <li>双击运行 <strong>单词学习助手.exe</strong></li>
-              <li>程序无需安装，直接运行即可使用</li>
-              <li>首次运行会在同级目录创建数据库文件</li>
-            </ol>
+            <h3>🚀 快速开始</h3>
+            <div class="option-tabs">
+              <button 
+                class="tab-btn" 
+                :class="{ active: activeOption === 'source' }"
+                @click="activeOption = 'source'"
+              >
+                从源码运行
+              </button>
+              <button 
+                class="tab-btn" 
+                :class="{ active: activeOption === 'package' }"
+                @click="activeOption = 'package'"
+              >
+                自行打包 EXE
+              </button>
+            </div>
+
+            <div v-if="activeOption === 'source'" class="tab-content">
+              <h4>📋 步骤</h4>
+              <ol>
+                <li>下载项目源代码（或从本地获取）</li>
+                <li>进入 <strong>背单词</strong> 文件夹</li>
+                <li>按住 Shift + 右键，选择"在此处打开 PowerShell"</li>
+                <li>运行：<code>python main.py</code></li>
+              </ol>
+              <div class="tip-box">
+                <strong>💡 提示：</strong>需要先安装 Python 和依赖包
+                <br>
+                <code>pip install PyPDF2 pdfplumber</code>
+              </div>
+            </div>
+
+            <div v-if="activeOption === 'package'" class="tab-content">
+              <h4>📦 方式一：使用打包助手（推荐）</h4>
+              <ol>
+                <li>进入 <strong>背单词</strong> 文件夹</li>
+                <li>运行打包助手：<code>python 打包助手.py</code></li>
+                <li>按照提示操作即可</li>
+              </ol>
+              <div class="tip-box">
+                <strong>✨ 打包助手会自动：</strong><br>
+                • 检查并安装依赖<br>
+                • 执行打包命令<br>
+                • 询问是否复制到后端
+              </div>
+              
+              <h4 style="margin-top: 24px;">📦 方式二：手动打包</h4>
+              <ol>
+                <li>安装 PyInstaller：<code>python -m pip install pyinstaller</code></li>
+                <li>进入 <strong>背单词</strong> 文件夹</li>
+                <li>运行打包命令：
+                  <pre><code>python -m PyInstaller --onefile --windowed --name "单词学习助手" main.py</code></pre>
+                </li>
+                <li>打包完成后，EXE 在 <code>dist</code> 文件夹中</li>
+                <li>将 EXE 复制到：<code>backend/uploads/downloads/</code></li>
+              </ol>
+              <div class="tip-box">
+                <strong>💡 提示：</strong>打包可能需要几分钟时间，请耐心等待
+              </div>
+            </div>
           </div>
         </div>
 
         <div class="source-section">
-          <h3>🔧 开发者选项</h3>
-          <p>如果你想从源码运行或自行打包：</p>
-          <div class="code-block">
-            <pre><code># 克隆项目
-cd 背单词
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 运行程序
-python main.py
-
-# 或打包成 exe
-build.bat</code></pre>
+          <h3>� 项目文件说明</h3>
+          <div class="file-list">
+            <div class="file-item">
+              <span class="file-icon">📄</span>
+              <span class="file-name">main.py</span>
+              <span class="file-desc">主程序入口</span>
+            </div>
+            <div class="file-item">
+              <span class="file-icon">🗄️</span>
+              <span class="file-name">database.py</span>
+              <span class="file-desc">数据库管理</span>
+            </div>
+            <div class="file-item">
+              <span class="file-icon">📖</span>
+              <span class="file-name">pdf_reader.py</span>
+              <span class="file-desc">PDF 文件解析</span>
+            </div>
+            <div class="file-item">
+              <span class="file-icon">📦</span>
+              <span class="file-name">requirements.txt</span>
+              <span class="file-desc">Python 依赖列表</span>
+            </div>
+            <div class="file-item">
+              <span class="file-icon">📝</span>
+              <span class="file-name">打包指南.md</span>
+              <span class="file-desc">详细的打包教程</span>
+            </div>
+            <div class="file-item">
+              <span class="file-icon">🔧</span>
+              <span class="file-name">打包助手.py</span>
+              <span class="file-desc">一键打包辅助工具</span>
+            </div>
           </div>
         </div>
       </div>
@@ -107,13 +179,14 @@ import http from '../api/http'
 const router = useRouter()
 const authStore = useAuthStore()
 const downloading = ref(false)
+const activeOption = ref('source')
 
 async function handleDownload() {
   downloading.value = true
   
   try {
-    const apiUrl = http.defaults.baseURL || ''
-    const downloadUrl = `${apiUrl}/admin/download/desktop-app`
+    const backendUrl = 'http://localhost:5000'
+    const downloadUrl = `${backendUrl}/admin/download/desktop-app`
     
     window.open(downloadUrl, '_blank')
   } catch (error) {
@@ -132,7 +205,7 @@ function handleLogout() {
 
 <style scoped>
 .download-section {
-  max-width: 900px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 40px 0;
 }
@@ -222,13 +295,25 @@ function handleLogout() {
 }
 
 .download-info {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .download-info p {
   margin: 8px 0;
   color: #606266;
   font-size: 14px;
+}
+
+.alert {
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.alert-info {
+  background: #ecf5ff;
+  border: 1px solid #b3d8ff;
+  color: #409eff;
 }
 
 .btn-large {
@@ -250,15 +335,100 @@ function handleLogout() {
   color: #303133;
 }
 
-.instructions-card ol {
+.option-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #ebeef5;
+  padding-bottom: 0;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  color: #606266;
+  font-size: 14px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.3s;
+}
+
+.tab-btn:hover {
+  color: #409eff;
+}
+
+.tab-btn.active {
+  color: #409eff;
+  border-bottom-color: #409eff;
+  font-weight: 500;
+}
+
+.tab-content {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tab-content h4 {
+  font-size: 16px;
+  color: #303133;
+  margin-bottom: 12px;
+}
+
+.tab-content ol {
   margin: 0;
   padding-left: 20px;
   color: #606266;
   line-height: 2;
 }
 
-.instructions-card li {
-  margin-bottom: 8px;
+.tab-content li {
+  margin-bottom: 10px;
+}
+
+.tab-content code {
+  background: #f5f7fa;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  color: #409eff;
+}
+
+.tab-content pre {
+  background: #1e1e1e;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 8px 0;
+  overflow-x: auto;
+}
+
+.tab-content pre code {
+  background: transparent;
+  color: #d4d4d4;
+  padding: 0;
+}
+
+.tip-box {
+  background: #f0f9eb;
+  border: 1px solid #c2e7b0;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-top: 16px;
+  color: #67c23a;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .source-section {
@@ -269,32 +439,39 @@ function handleLogout() {
 
 .source-section h3 {
   margin-top: 0;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
   font-size: 18px;
   color: #303133;
 }
 
-.source-section p {
-  color: #606266;
-  margin-bottom: 16px;
+.file-list {
+  display: grid;
+  gap: 12px;
 }
 
-.code-block {
-  background: #1e1e1e;
-  border-radius: 8px;
-  padding: 16px;
-  overflow-x: auto;
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.code-block pre {
-  margin: 0;
+.file-icon {
+  font-size: 20px;
 }
 
-.code-block code {
-  color: #d4d4d4;
-  font-family: 'Consolas', 'Monaco', monospace;
+.file-name {
+  font-weight: 500;
+  color: #303133;
+  min-width: 140px;
+}
+
+.file-desc {
+  color: #909399;
   font-size: 14px;
-  line-height: 1.6;
 }
 
 .btn-sm {
