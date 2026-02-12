@@ -229,10 +229,10 @@ def upload():
 
 
 def extract_words_from_pdf(pdf_path):
-    """直接从PDF读取Word和Meaning列"""
+    """直接从PDF读取Word和Meaning列，支持一行多组"""
     words_data = []
-    word_col_idx = 0
-    meaning_col_idx = 1
+    word_cols = []
+    meaning_cols = []
     header_found = False
     
     try:
@@ -250,65 +250,79 @@ def extract_words_from_pdf(pdf_path):
                     if not header_found and page_num == 1 and table_idx == 1 and len(table) > 0:
                         header_row = [str(cell).lower().strip() if cell else '' for cell in table[0]]
                         
-                        # 查找 Word 列
+                        # 查找所有 Word 列
                         for idx, cell in enumerate(header_row):
                             if 'word' in cell or '单词' in cell:
-                                word_col_idx = idx
+                                word_cols.append(idx)
                                 header_found = True
-                                break
                         
-                        # 查找 Meaning 列
+                        # 查找所有 Meaning 列
                         for idx, cell in enumerate(header_row):
                             if 'meaning' in cell or '释义' in cell or '中文' in cell:
-                                meaning_col_idx = idx
-                                break
+                                meaning_cols.append(idx)
                         
                         # 从第二行开始是数据
                         start_row = 1
                     else:
                         start_row = 0
                     
+                    # 如果没有找到列，设置默认值
+                    if not word_cols and table and len(table[0]) >= 4:
+                        word_cols = [0, 2]
+                        meaning_cols = [1, 3]
+                    elif not word_cols:
+                        word_cols = [0]
+                        meaning_cols = [1]
+                    
                     # 读取数据行
                     for i in range(start_row, len(table)):
                         row = table[i]
-                        if not row or len(row) <= max(word_col_idx, meaning_col_idx):
+                        if not row:
                             continue
                         
-                        word_cell = row[word_col_idx]
-                        meaning_cell = row[meaning_col_idx]
-                        
-                        if not word_cell or not meaning_cell:
-                            continue
-                        
-                        word_str = clean_cell_content(word_cell)
-                        meaning_str = clean_cell_content(meaning_cell)
-                        
-                        if not word_str or not meaning_str:
-                            continue
-                        
-                        # 解析单词和音标
-                        word = ''
-                        phonetic = ''
-                        
-                        if '\n' in word_str:
-                            parts = word_str.split('\n', 1)
-                            word = parts[0].strip()
-                            if len(parts) > 1:
-                                phonetic_part = parts[1].strip()
-                                phonetic_match = re.search(r'\[([^\]]+)\]', phonetic_part)
-                                if phonetic_match:
-                                    phonetic = phonetic_match.group(1)
-                        else:
-                            phonetic_match = re.search(r'([a-zA-Z\s\-]+)\s*\[([^\]]+)\]', word_str)
-                            if phonetic_match:
-                                word = phonetic_match.group(1).strip()
-                                phonetic = phonetic_match.group(2).strip()
+                        # 遍历每一组 Word-Meaning
+                        for j in range(min(len(word_cols), len(meaning_cols))):
+                            word_col_idx = word_cols[j]
+                            meaning_col_idx = meaning_cols[j]
+                            
+                            if word_col_idx >= len(row) or meaning_col_idx >= len(row):
+                                continue
+                            
+                            word_cell = row[word_col_idx]
+                            meaning_cell = row[meaning_col_idx]
+                            
+                            if not word_cell or not meaning_cell:
+                                continue
+                            
+                            word_str = clean_cell_content(word_cell)
+                            meaning_str = clean_cell_content(meaning_cell)
+                            
+                            if not word_str or not meaning_str:
+                                continue
+                            
+                            # 解析单词和音标
+                            word = ''
+                            phonetic = ''
+                            
+                            if '\n' in word_str:
+                                parts = word_str.split('\n', 1)
+                                word = parts[0].strip()
+                                if len(parts) > 1:
+                                    phonetic_part = parts[1].strip()
+                                    phonetic_match = re.search(r'\[([^\]]+)\]', phonetic_part)
+                                    if phonetic_match:
+                                        phonetic = phonetic_match.group(1)
                             else:
-                                word = word_str
-                        
-                        # 只要单词不为空就添加
-                        if word:
-                            words_data.append((word, phonetic, meaning_str))
+                                phonetic_match = re.search(r'([a-zA-Z\s\-]+)\s*\[([^\]]+)\]', word_str)
+                                if phonetic_match:
+                                    word = phonetic_match.group(1).strip()
+                                    phonetic = phonetic_match.group(2).strip()
+                                else:
+                                    word = word_str
+                            
+                            # 只要单词不为空就添加
+                            if word:
+                                words_data.append((word, phonetic, meaning_str))
     
     except Exception as e:
         print(f"PDF读取失败: {str(e)}")
