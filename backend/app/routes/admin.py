@@ -228,9 +228,102 @@ def upload():
 
 
 
+def extract_words_from_pdf(pdf_path):
+    """直接从PDF提取单词数据，识别Word和Meaning列"""
+    all_rows = []
+    word_col_idx = 0
+    meaning_col_idx = 1
+    
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            for page_num, page in enumerate(pdf.pages, 1):
+                tables = page.extract_tables()
+                if not tables:
+                    continue
+                    
+                for table_idx, table in enumerate(tables, 1):
+                    if not table or len(table) == 0:
+                        continue
+                        
+                    # 第一页的第一个表格，尝试识别表头
+                    if page_num == 1 and table_idx == 1 and len(table) > 0:
+                        header_row = [str(cell).lower().strip() if cell else '' for cell in table[0]]
+                        
+                        # 查找 Word 列
+                        for idx, cell in enumerate(header_row):
+                            if 'word' in cell or '单词' in cell:
+                                word_col_idx = idx
+                                break
+                        
+                        # 查找 Meaning 列
+                        for idx, cell in enumerate(header_row):
+                            if 'meaning' in cell or '释义' in cell or '中文' in cell:
+                                meaning_col_idx = idx
+                                break
+                    
+                    # 处理数据行
+                    i = 0
+                    while i < len(table):
+                        cleaned_row = [clean_cell_content(cell) for cell in table[i]]
+                        
+                        if i + 1 < len(table):
+                            cleaned_next_row = [clean_cell_content(cell) for cell in table[i + 1]]
+                            
+                            has_content = has_any_content(cleaned_row)
+                            next_has_content = has_any_content(cleaned_next_row)
+                            
+                            if has_content and next_has_content:
+                                merged_row = merge_two_rows(cleaned_row, cleaned_next_row)
+                                if has_any_content(merged_row):
+                                    all_rows.append(merged_row)
+                                i += 2
+                                continue
+                        
+                        if has_any_content(cleaned_row):
+                            all_rows.append(cleaned_row)
+                        i += 1
+    except Exception as e:
+        print(f"PDF读取失败: {str(e)}")
+        raise Exception(f"PDF读取失败: {str(e)}")
+    
+    # 提取单词数据
+    words_data = []
+    for row in all_rows:
+        if len(row) > max(word_col_idx, meaning_col_idx):
+            word_part = str(row[word_col_idx]) if row[word_col_idx] else ''
+            meaning_part = str(row[meaning_col_idx]) if row[meaning_col_idx] else ''
+            
+            if word_part and meaning_part:
+                # 解析单词和音标
+                word = ''
+                phonetic = ''
+                
+                if '\n' in word_part:
+                    parts = word_part.split('\n', 1)
+                    word = parts[0].strip()
+                    if len(parts) > 1:
+                        phonetic_part = parts[1].strip()
+                        phonetic_match = re.search(r'\[([^\]]+)\]', phonetic_part)
+                        if phonetic_match:
+                            phonetic = phonetic_match.group(1)
+                else:
+                    phonetic_match = re.search(r'([a-zA-Z\s\-]+)\s*\[([^\]]+)\]', word_part)
+                    if phonetic_match:
+                        word = phonetic_match.group(1).strip()
+                        phonetic = phonetic_match.group(2).strip()
+                    else:
+                        word = word_part
+                
+                # 验证单词
+                if word and re.match(r'^[a-zA-ZÀ-ſ\s\-\']+$', word):
+                    words_data.append((word, phonetic, meaning_part))
+    
+    return words_data
+
+
 @admin_bp.route('/api/convert-pdf', methods=['POST'])
 def api_convert_pdf():
-    """将PDF转换为Excel，保存到单词库文件夹，然后上传到词库"""
+    """直接从PDF读取并导入单词到数据库"""
     if 'pdf_file' not in request.files:
         return jsonify({'success': False, 'message': '请上传PDF文件'}), 400
     
@@ -253,41 +346,22 @@ def api_convert_pdf():
     unique_id = str(uuid.uuid4())[:8]
     original_filename = secure_filename(pdf_file.filename)
     pdf_filename = f"{timestamp}_{unique_id}_{original_filename}"
-    excel_filename = f"{timestamp}_{unique_id}_{os.path.splitext(original_filename)[0]}.xlsx"
-    
-    # 创建单词库文件夹
-    wordbooks_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'wordbooks')
-    os.makedirs(wordbooks_folder, exist_ok=True)
     
     pdf_filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], pdf_filename)
-    excel_filepath = os.path.join(wordbooks_folder, excel_filename)
     
     try:
         # 保存PDF文件
         pdf_file.save(pdf_filepath)
         
-        # 转换PDF为Excel，保存到单词库文件夹
-        result_excel_path = pdf_table_to_excel(pdf_filepath, excel_filepath)
-        
-        if not result_excel_path:
-            if os.path.exists(pdf_filepath):
-                os.remove(pdf_filepath)
-            return jsonify({
-                'success': False, 
-                'message': 'PDF中未找到有效的表格数据，请确保PDF包含表格信息'
-            }), 400
-        
-        # 解析Excel
-        words_data = parse_excel(excel_filepath)
+        # 直接从PDF提取单词数据
+        words_data = extract_words_from_pdf(pdf_filepath)
         
         if not words_data:
             if os.path.exists(pdf_filepath):
                 os.remove(pdf_filepath)
-            if os.path.exists(excel_filepath):
-                os.remove(excel_filepath)
             return jsonify({
                 'success': False, 
-                'message': 'Excel中未找到有效的单词数据'
+                'message': 'PDF中未找到有效的单词数据，请确保PDF包含表格信息'
             }), 400
         
         # 创建单词书
@@ -316,10 +390,9 @@ def api_convert_pdf():
         
         return jsonify({
             'success': True,
-            'message': f'成功从PDF转换并导入 {len(words_data)} 个单词',
+            'message': f'成功从PDF导入 {len(words_data)} 个单词',
             'wordbook_id': wordbook.id,
-            'word_count': len(words_data),
-            'excel_path': f'/admin/download/wordbooks/{excel_filename}'
+            'word_count': len(words_data)
         }), 201
     
     except Exception as e:
