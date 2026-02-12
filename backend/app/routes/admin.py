@@ -96,8 +96,7 @@ def pdf_table_to_excel(pdf_path, excel_path=None):
     if excel_path is None:
         excel_path = os.path.splitext(pdf_path)[0] + '.xlsx'
     
-    all_data = []
-    header = None
+    all_rows = []
     
     try:
         with pdfplumber.open(pdf_path) as pdf:
@@ -110,10 +109,7 @@ def pdf_table_to_excel(pdf_path, excel_path=None):
                     if not table or len(table) == 0:
                         continue
                         
-                    if header is None:
-                        header = [clean_cell_content(cell) for cell in table[0]]
-                    
-                    i = 1
+                    i = 0
                     while i < len(table):
                         cleaned_row = [clean_cell_content(cell) for cell in table[i]]
                         
@@ -126,63 +122,70 @@ def pdf_table_to_excel(pdf_path, excel_path=None):
                             if has_content and next_has_content:
                                 merged_row = merge_two_rows(cleaned_row, cleaned_next_row)
                                 if has_any_content(merged_row):
-                                    row_with_info = merged_row + [page_num, table_idx]
-                                    all_data.append(row_with_info)
+                                    all_rows.append(merged_row)
                                 i += 2
                                 continue
                         
                         if has_any_content(cleaned_row):
-                            row_with_info = cleaned_row + [page_num, table_idx]
-                            all_data.append(row_with_info)
+                            all_rows.append(cleaned_row)
                         i += 1
     except Exception as e:
         print(f"PDF读取失败: {str(e)}")
         raise Exception(f"PDF读取失败: {str(e)}")
     
-    if not all_data or not header:
+    if not all_rows:
         print(f"未在 {os.path.basename(pdf_path)} 中找到表格")
         return None
     
-    header_with_info = header + ['页码', '表格序号']
+    # 转换为标准格式：Word, Meaning
+    standard_data = []
+    for row in all_rows:
+        if len(row) >= 2:
+            word_part = str(row[0]) if row[0] else ''
+            meaning_part = str(row[1]) if row[1] else ''
+            
+            if word_part and meaning_part:
+                standard_data.append([word_part, meaning_part])
+    
+    if not standard_data:
+        print(f"未找到有效的单词-释义对")
+        return None
+    
+    # 创建 DataFrame，使用标准列名
+    df = pd.DataFrame(standard_data, columns=['Word', 'Meaning'])
+    
+    # 清理DataFrame中的特殊字符
+    for col in df.columns:
+        df[col] = df[col].apply(clean_dataframe_value)
     
     try:
-        df = pd.DataFrame(all_data, columns=header_with_info)
-        
-        # 清理DataFrame中的特殊字符
-        for col in df.columns:
-            df[col] = df[col].apply(clean_dataframe_value)
-        
-        try:
-            with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-                df.to_excel(writer, sheet_name='所有数据', index=False)
-                worksheet = writer.sheets['所有数据']
-                
-                for row in worksheet.iter_rows():
-                    for cell in row:
-                        if cell.value and '\n' in str(cell.value):
-                            cell.alignment = Alignment(wrap_text=True)
+        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='单词数据', index=False)
+            worksheet = writer.sheets['单词数据']
             
-            print(f"成功将 {os.path.basename(pdf_path)} 转换为: {os.path.basename(excel_path)}")
-            return excel_path
-        except Exception as e:
-            print(f"Excel写入失败: {str(e)}")
-            # 尝试简化数据后再写入
-            try:
-                # 移除所有特殊字符，只保留基本字符
-                for col in df.columns:
-                    df[col] = df[col].apply(lambda x: re.sub(r'[^\w\s\u4e00-\u9fff]', '', str(x)) if x is not None else x)
-                
-                with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-                    df.to_excel(writer, sheet_name='所有数据', index=False)
-                
-                print(f"使用简化数据成功转换: {os.path.basename(excel_path)}")
-                return excel_path
-            except Exception as e2:
-                print(f"简化数据写入也失败: {str(e2)}")
-                raise Exception(f"无法创建Excel文件: {str(e2)}")
+            for row in worksheet.iter_rows():
+                for cell in row:
+                    if cell.value and '\n' in str(cell.value):
+                        cell.alignment = Alignment(wrap_text=True)
+        
+        print(f"成功将 {os.path.basename(pdf_path)} 转换为: {os.path.basename(excel_path)}")
+        return excel_path
     except Exception as e:
-        print(f"DataFrame创建失败: {str(e)}")
-        raise Exception(f"数据处理失败: {str(e)}")
+        print(f"Excel写入失败: {str(e)}")
+        # 尝试简化数据后再写入
+        try:
+            # 移除所有特殊字符，只保留基本字符
+            for col in df.columns:
+                df[col] = df[col].apply(lambda x: re.sub(r'[^\w\s\u4e00-\u9fff]', '', str(x)) if x is not None else x)
+            
+            with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='单词数据', index=False)
+            
+            print(f"使用简化数据成功转换: {os.path.basename(excel_path)}")
+            return excel_path
+        except Exception as e2:
+            print(f"简化数据写入也失败: {str(e2)}")
+            raise Exception(f"无法创建Excel文件: {str(e2)}")
 
 
 @admin_bp.route('/')
