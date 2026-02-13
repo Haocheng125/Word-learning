@@ -16,6 +16,6 @@ COPY backend/ .
 
 RUN mkdir -p uploads
 
-EXPOSE 5000
+EXPOSE 8080
 
-CMD ["python", "wsgi.py"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8080", "wsgi:app"]
