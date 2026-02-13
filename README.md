@@ -3,7 +3,7 @@
 一个基于 Flask + Vue3 的单词学习网站，支持 Excel/PDF 词库导入、在线学习、生词本管理和桌面版应用。
 
 > 🌐 **在线访问**
-> - 前端（用户端）: https://21fe87f2.word-learning.pages.dev/
+> - 前端（用户端）: https://word-learning.pages.dev/
 > - 后端（管理端）: https://lain05.zeabur.app/admin
 >
 > 🖥️ **本地运行地址**
