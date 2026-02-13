@@ -1,6 +1,6 @@
 {% extends "admin/base.html" %}
 
-{% block title %}上传词库文件{% endblock %}
+{% block title %}上传词库{% endblock %}
 
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
@@ -44,7 +44,7 @@
             <p id="statusText" style="margin-top: 0.5rem; color: #7f8c8d;">正在上传...</p>
         </div>
         
-        <button type="submit" class="btn btn-success" id="submitBtn">开始上传并解析</button>
+        <button type="submit" class="btn btn-success" id="submitBtn">上传词库</button>
     </form>
 </div>
 
@@ -78,21 +78,20 @@
             <p id="pdfStatusText" style="margin-top: 0.5rem; color: #7f8c8d;">正在处理...</p>
         </div>
         
-        <button type="submit" class="btn btn-success" id="pdfSubmitBtn">PDF 读取并导入</button>
+        <button type="submit" class="btn btn-success" id="pdfSubmitBtn">上传词库</button>
     </form>
 </div>
 
 <!-- 使用说明 -->
 <div class="card">
     <h2>📋 使用说明</h2>
-    <h3>Excel 上传</h3>
+    <h3>Excel 词库</h3>
     <ul style="line-height: 2;">
         <li>支持上传 Excel 文件（.xlsx 或 .xls）</li>
-        <li>第一列：英文单词（Word）</li>
-        <li>第二列：中文释义（Meaning）</li>
-        <li>系统会自动识别表头（如果有）</li>
+        <li>表格中需要包含 Word 列（英文单词）和 Meaning 列（中文释义）</li>
+        <li>支持一行中有多组 Word-Meaning 列对（如 Word1, Meaning1, Word2, Meaning2）</li>
+        <li>系统会自动识别表头并读取所有单词</li>
         <li>文件大小限制：50MB</li>
-        <li>上传后会自动显示解析结果</li>
     </ul>
     
     <h3 style="margin-top: 1.5rem;">PDF 读取</h3>
@@ -100,6 +99,7 @@
         <li>支持上传 PDF 文件（.pdf）</li>
         <li>PDF 需包含表格数据</li>
         <li>表格需包含 Word 列（英文单词）和 Meaning 列（中文释义）</li>
+        <li>支持一行中有多组 Word-Meaning 列对</li>
         <li>系统会自动读取 Word 和 Meaning 列，直接导入词库</li>
         <li>文件大小限制：50MB</li>
     </ul>
@@ -197,7 +197,7 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
         document.getElementById('statusText').textContent = '❌ ' + error.message;
         document.getElementById('statusText').style.color = '#e74c3c';
         document.getElementById('submitBtn').disabled = false;
-        document.getElementById('submitBtn').textContent = '开始上传并解析';
+        document.getElementById('submitBtn').textContent = '上传词库';
         alert('上传失败：' + error.message);
     }
 });
@@ -263,7 +263,7 @@ document.getElementById('pdfUploadForm').addEventListener('submit', async functi
         document.getElementById('pdfStatusText').textContent = '❌ ' + error.message;
         document.getElementById('pdfStatusText').style.color = '#e74c3c';
         document.getElementById('pdfSubmitBtn').disabled = false;
-        document.getElementById('pdfSubmitBtn').textContent = 'PDF 转换并导入';
+        document.getElementById('pdfSubmitBtn').textContent = '上传词库';
         alert('处理失败：' + error.message);
     }
 });
