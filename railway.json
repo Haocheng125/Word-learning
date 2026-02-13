@@ -1,9 +1,9 @@
 {
   "build": {
-    "builder": "NIXPACKS"
+    "builder": "DOCKER",
+    "dockerfile": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "gunicorn --chdir backend wsgi:app",
     "healthcheckPath": "/",
     "healthcheckTimeout": 100
   }
