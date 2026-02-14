@@ -4,21 +4,18 @@ from datetime import timedelta
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
     
-    # 数据库配置 - 支持多种环境
-    # 优先使用 POSTGRES_URI (Zeabur) 或 DATABASE_URL (Render/Railway)
-    DATABASE_URL = os.environ.get('POSTGRES_URI') or os.environ.get('DATABASE_URL') or os.environ.get('MYSQL_URL')
+    # 数据库配置 - 优先使用环境变量
+    DATABASE_URL = os.environ.get('DATABASE_URL')
     
     if DATABASE_URL:
-        # 云平台提供的数据库
-        # 处理 postgres:// 和 postgresql:// 两种格式
+        # 处理 Railway/Render 提供的数据库 URL
         if DATABASE_URL.startswith('postgres://'):
             DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-        # 处理 mysql:// 格式，改为 mysql+pymysql://
         elif DATABASE_URL.startswith('mysql://'):
             DATABASE_URL = DATABASE_URL.replace('mysql://', 'mysql+pymysql://', 1)
         SQLALCHEMY_DATABASE_URI = DATABASE_URL
     else:
-        # 本地开发使用 MySQL
+        # 本地开发默认配置
         MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
         MYSQL_PORT = os.environ.get('MYSQL_PORT', '3306')
         MYSQL_USER = os.environ.get('MYSQL_USER', 'root')
