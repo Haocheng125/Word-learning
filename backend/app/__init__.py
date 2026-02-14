@@ -13,14 +13,10 @@ def create_app():
     # 初始化扩展
     db.init_app(app)
     jwt.init_app(app)
-    # 配置 CORS - 允许特定域名
-    allowed_origins = os.environ.get('ALLOWED_ORIGINS', '*')
-    if allowed_origins != '*':
-        allowed_origins = [origin.strip() for origin in allowed_origins.split(',')]
-    
+    # 配置 CORS - 允许所有来源（简化测试）
     cors.init_app(app, resources={
-        r"/api/*": {"origins": allowed_origins},
-        r"/admin*": {"origins": allowed_origins}
+        r"/api/*": {"origins": "*"},
+        r"/admin*": {"origins": "*"}
     })
     bcrypt.init_app(app)
     
