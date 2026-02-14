@@ -193,7 +193,7 @@ def api_upload_excel():
                 word=word,
                 phonetic=phonetic,
                 translation=translation,
-                word_order=idx
+                sort_order=idx
             )
             db.session.add(word_obj)
         
@@ -251,7 +251,7 @@ def api_convert_pdf():
                 word=word,
                 phonetic=phonetic,
                 translation=translation,
-                word_order=idx
+                sort_order=idx
             )
             db.session.add(word_obj)
         

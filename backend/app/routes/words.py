@@ -19,7 +19,7 @@ def get_word(wordbook_id, sequence):
     
     word = Word.query.filter_by(
         wordbook_id=wordbook_id,
-        word_order=sequence
+        sort_order=sequence
     ).first()
     
     if not word:
@@ -53,9 +53,9 @@ def get_words_batch(wordbook_id):
     
     words = Word.query.filter(
         Word.wordbook_id == wordbook_id,
-        Word.word_order >= start,
-        Word.word_order < start + limit
-    ).order_by(Word.word_order).all()
+        Word.sort_order >= start,
+        Word.sort_order < start + limit
+    ).order_by(Word.sort_order).all()
     
     return jsonify({
         'success': True,
