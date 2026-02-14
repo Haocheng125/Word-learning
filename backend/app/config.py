@@ -5,10 +5,17 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
     
     # 数据库配置 - 优先使用环境变量
-    DATABASE_URL = os.environ.get('DATABASE_URL')
+    DATABASE_URL = (
+        os.environ.get('DATABASE_URL') or 
+        os.environ.get('MYSQL_URL') or 
+        os.environ.get('MYSQLDATABASE_URL') or
+        os.environ.get('POSTGRES_URL') or
+        os.environ.get('POSTGRESQL_URL')
+    )
     
     # 打印调试信息（生产环境可删除）
     print(f"[DEBUG] DATABASE_URL from env: {DATABASE_URL}")
+    print(f"[DEBUG] All env vars: {dict(os.environ)}")
     
     if DATABASE_URL:
         # 处理 Railway/Render 提供的数据库 URL
