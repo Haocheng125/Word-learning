@@ -14,9 +14,11 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
     # 配置 CORS - 允许特定域名
-    allowed_origins = os.environ.get('ALLOWED_ORIGINS', '*')
-    if allowed_origins != '*':
+    allowed_origins = os.environ.get('ALLOWED_ORIGINS', '')
+    if allowed_origins:
         allowed_origins = [origin.strip() for origin in allowed_origins.split(',')]
+    else:
+        allowed_origins = '*'
     
     cors.init_app(app, resources={
         r"/api/*": {"origins": allowed_origins},
