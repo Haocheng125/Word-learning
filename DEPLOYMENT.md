@@ -12,7 +12,7 @@
    - 选择 "Deploy from GitHub repo"
    - 选择你的仓库（word-learning）
 3. **添加数据库**：
-   - 在项目中点击 "Add Service" → "Database" → "PostgreSQL"
+   - 在项目中点击 "Add Service" → "Database" → "MySQL"
 4. **配置环境变量**：
    - 在后端服务中设置以下环境变量：
      - `DATABASE_URL`：Railway 会自动提供（无需手动设置）
