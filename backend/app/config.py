@@ -7,6 +7,9 @@ class Config:
     # 数据库配置 - 优先使用环境变量
     DATABASE_URL = os.environ.get('DATABASE_URL')
     
+    # 打印调试信息（生产环境可删除）
+    print(f"[DEBUG] DATABASE_URL from env: {DATABASE_URL}")
+    
     if DATABASE_URL:
         # 处理 Railway/Render 提供的数据库 URL
         if DATABASE_URL.startswith('postgres://'):
@@ -14,6 +17,7 @@ class Config:
         elif DATABASE_URL.startswith('mysql://'):
             DATABASE_URL = DATABASE_URL.replace('mysql://', 'mysql+pymysql://', 1)
         SQLALCHEMY_DATABASE_URI = DATABASE_URL
+        print(f"[DEBUG] Using DATABASE_URL: {SQLALCHEMY_DATABASE_URI}")
     else:
         # 本地开发默认配置
         MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
@@ -26,6 +30,7 @@ class Config:
             f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@"
             f"{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8mb4"
         )
+        print(f"[DEBUG] Using local MySQL: {SQLALCHEMY_DATABASE_URI}")
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
