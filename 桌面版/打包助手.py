@@ -23,7 +23,7 @@ def install_package(package):
 def check_and_install_dependencies():
     print_header("检查依赖")
     
-    required_packages = ['PyInstaller', 'PyPDF2', 'pdfplumber']
+    required_packages = ['PyInstaller', 'pdfplumber']
     
     for package in required_packages:
         try:

@@ -28,7 +28,7 @@
             <tr>
                 <td>{{ wb.id }}</td>
                 <td><strong>{{ wb.name }}</strong></td>
-                <td>{{ wb.description[:50] }}{% if wb.description|length > 50 %}...{% endif %}</td>
+                <td>{{ (wb.description or '')[:50] }}{% if (wb.description or '')|length > 50 %}...{% endif %}</td>
                 <td><strong>{{ wb.word_count }}</strong></td>
                 <td>
                     {% if wb.is_active %}

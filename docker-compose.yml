@@ -1,57 +1,50 @@
 name: word-learning
-
 services:
-  mysql:
+  db:
     image: mysql:8.0
-    container_name: word-learning-mysql
-    restart: unless-stopped
+    container_name: word-learning-db
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-password}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-word_learning}
-      MYSQL_CHARACTER_SET_SERVER: utf8mb4
-      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: word_learning
+      MYSQL_USER: word_user
+      MYSQL_PASSWORD: word_password
     ports:
       - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   backend:
     build:
-      context: ./backend
-      dockerfile: ../docker/backend.Dockerfile
+      context: .
+      dockerfile: Dockerfile
     container_name: word-learning-backend
-    restart: unless-stopped
     environment:
-      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key-change-in-production}
-      MYSQL_HOST: mysql
-      MYSQL_PORT: 3306
-      MYSQL_USER: root
-      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-password}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-word_learning}
-    volumes:
-      - ./backend/uploads:/app/uploads
+      DATABASE_URL: mysql+pymysql://word_user:word_password@db:3306/word_learning
+      SECRET_KEY: dev-secret-key-change-in-production
     ports:
       - "5000:5000"
+    volumes:
+      - ./backend/uploads:/app/uploads
     depends_on:
-      mysql:
+      db:
         condition: service_healthy
+    restart: on-failure
 
   frontend:
-    build:
-      context: .
-      dockerfile: docker/frontend.Dockerfile
+    image: node:18-alpine
     container_name: word-learning-frontend
-    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
     ports:
-      - "4000:80"
-    depends_on:
-      - backend
+      - "4000:4000"
+    command: >
+      sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 4000"
 
 volumes:
   mysql_data:

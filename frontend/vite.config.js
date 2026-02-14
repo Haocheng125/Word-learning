@@ -7,7 +7,11 @@ export default defineConfig({
     port: 4000,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://backend:5000',
+        changeOrigin: true
+      },
+      '/admin': {
+        target: 'http://backend:5000',
         changeOrigin: true
       }
     }

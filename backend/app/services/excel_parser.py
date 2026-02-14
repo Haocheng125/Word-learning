@@ -5,96 +5,76 @@ import re
 logger = logging.getLogger(__name__)
 
 def parse_excel(excel_path):
-    words = []
+    word_dict = {}
     try:
         workbook = openpyxl.load_workbook(excel_path, read_only=True, data_only=True)
         sheet = workbook.active
         
         logger.info(f'解析Excel: {sheet.title}, {sheet.max_row}行, {sheet.max_column}列')
         
-        serial_col = None
-        word_col = None
-        meaning_col = None
-        
-        for row_idx in range(1, min(6, sheet.max_row + 1)):
-            row = list(sheet.iter_rows(min_row=row_idx, max_row=row_idx, values_only=True))[0]
-            for col_idx, cell in enumerate(row, 1):
-                if cell is None:
-                    continue
+        for row_idx in range(1, sheet.max_row + 1):
+            try:
+                row = list(sheet.iter_rows(min_row=row_idx, max_row=row_idx, values_only=True))[0]
                 
-                cell_str = str(cell).strip()
+                cells = []
+                for cell in row:
+                    if cell is None:
+                        cells.append('')
+                    else:
+                        cells.append(str(cell).strip())
                 
-                if not serial_col and cell_str.isdigit():
-                    serial_col = col_idx
-                    continue
-                
-                if serial_col and not word_col:
-                    if re.search(r'[a-zA-Z]', cell_str):
-                        word_col = col_idx
-                        continue
-                
-                if serial_col and word_col and not meaning_col:
-                    if any(char >= '\u4e00' and char <= '\u9fff' for char in cell_str):
-                        meaning_col = col_idx
-                        break
+                # 处理 Excel 读取
+                if len(cells) >= 3:
+                    # 3 列：序号、英文、中文
+                    serial = cells[0]
+                    word_str = cells[1]
+                    meaning_str = cells[2]
+                    
+                    if serial and serial.isdigit() and word_str and meaning_str:
+                        serial_num = int(serial)
+                        
+                        word = ''
+                        phonetic = ''
+                        phonetic_match = re.search(r'\[([^\]]+)\]', word_str)
+                        if phonetic_match:
+                            word = word_str.replace(phonetic_match.group(0), '').strip()
+                            phonetic = phonetic_match.group(1).strip()
+                        else:
+                            word = word_str
+                        
+                        if word and serial_num not in word_dict:
+                            word_dict[serial_num] = (word, phonetic, meaning_str)
+                elif len(cells) >= 2:
+                    # 2 列：英文、中文（没有序号，用行号当序号）
+                    word_str = cells[0]
+                    meaning_str = cells[1]
+                    
+                    if word_str and meaning_str:
+                        serial_num = row_idx
+                        
+                        word = ''
+                        phonetic = ''
+                        phonetic_match = re.search(r'\[([^\]]+)\]', word_str)
+                        if phonetic_match:
+                            word = word_str.replace(phonetic_match.group(0), '').strip()
+                            phonetic = phonetic_match.group(1).strip()
+                        else:
+                            word = word_str
+                        
+                        if word and serial_num not in word_dict:
+                            word_dict[serial_num] = (word, phonetic, meaning_str)
             
-            if serial_col and word_col and meaning_col:
-                break
+            except Exception as e:
+                logger.warning(f'解析第{row_idx}行失败: {e}')
         
-        if not serial_col:
-            serial_col = 1
-        if not word_col:
-            word_col = 2
-        if not meaning_col:
-            meaning_col = 3
+        sorted_words = []
+        if word_dict:
+            max_serial = max(word_dict.keys())
+            for i in range(1, max_serial + 1):
+                if i in word_dict:
+                    sorted_words.append(word_dict[i])
         
-        logger.info(f'序列号列: {serial_col}, 单词列: {word_col}, 释义列: {meaning_col}')
-        
-        max_serial = 0
-        for row_idx in range(1, sheet.max_row + 1):
-            try:
-                row = list(sheet.iter_rows(min_row=row_idx, max_row=row_idx, values_only=True))[0]
-                
-                serial_cell = row[serial_col - 1] if serial_col <= len(row) else None
-                if serial_cell:
-                    serial_str = str(serial_cell).strip()
-                    if serial_str.isdigit():
-                        current_serial = int(serial_str)
-                        max_serial = max(max_serial, current_serial)
-        
-        logger.info(f'最大序列号: {max_serial}')
-        
-        for row_idx in range(1, sheet.max_row + 1):
-            try:
-                row = list(sheet.iter_rows(min_row=row_idx, max_row=row_idx, values_only=True))[0]
-                
-                serial_cell = row[serial_col - 1] if serial_col <= len(row) else None
-                word_cell = row[word_col - 1] if word_col <= len(row) else None
-                meaning_cell = row[meaning_col - 1] if meaning_col <= len(row) else None
-                
-                if not word_cell or not meaning_cell:
-                    continue
-                
-                word_str = str(word_cell).strip()
-                meaning_str = str(meaning_cell).strip()
-                
-                if not word_str or not meaning_str:
-                    continue
-                
-                word = ''
-                phonetic = ''
-                
-                phonetic_match = re.search(r'\[([^\]]+)\]', word_str)
-                if phonetic_match:
-                    word = word_str.replace(phonetic_match.group(0), '').strip()
-                    phonetic = phonetic_match.group(1).strip()
-                else:
-                    word = word_str
-                
-                if word:
-                    words.append((word, phonetic, meaning_str))
-        
-        logger.info(f'完成，共{len(words)}个单词')
+        logger.info(f'完成，共{len(sorted_words)}个单词')
         
     except FileNotFoundError:
         raise Exception(f'找不到文件: {excel_path}')
@@ -102,4 +82,4 @@ def parse_excel(excel_path):
         logger.error(f'解析失败: {e}', exc_info=True)
         raise Exception(f'解析失败: {e}')
     
-    return words
+    return sorted_words

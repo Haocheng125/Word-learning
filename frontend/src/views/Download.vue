@@ -62,7 +62,7 @@
             >
               {{ downloading ? '准备中...' : '📥 下载单词学习助手.exe' }}
             </button>
-            <p class="download-hint">如未自动下载，请检查浏览器设置</p>
+            <p class="download-hint">下载完成后直接运行即可，无需安装 Python！</p>
           </div>
 
           <div class="instructions-card card">
@@ -185,10 +185,7 @@ async function handleDownload() {
   downloading.value = true
   
   try {
-    const backendUrl = 'http://localhost:5000'
-    const downloadUrl = `${backendUrl}/admin/download/desktop-app`
-    
-    window.open(downloadUrl, '_blank')
+    window.open('/admin/download/desktop-app', '_blank')
   } catch (error) {
     alert('下载失败，请稍后重试')
     console.error('下载错误:', error)

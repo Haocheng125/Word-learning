@@ -57,6 +57,12 @@ def create_app():
     
     # 创建数据库表
     with app.app_context():
-        db.create_all()
+        # 生产环境不删除表，只创建
+        if os.environ.get('FLASK_ENV') == 'production':
+            db.create_all()
+        else:
+            # 开发环境可以删除重建
+            db.drop_all()
+            db.create_all()
     
     return app

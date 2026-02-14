@@ -17,6 +17,6 @@ COPY backend/ .
 
 RUN mkdir -p uploads
 
-EXPOSE 8080
+EXPOSE 5000
 
 CMD ["python", "wsgi.py"]

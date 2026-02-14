@@ -27,10 +27,34 @@
     <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
         <h3>单词列表</h3>
         <div>
+            <button class="btn" style="background: #27ae60; margin-right: 10px;" onclick="showAddWordForm()">➕ 添加单词</button>
             {% if wordbook.excel_path %}
-            <a href="{{ wordbook.excel_path }}" class="btn" style="background: #27ae60; margin-right: 10px;">📥 下载转换Excel</a>
+            <a href="{{ wordbook.excel_path }}" class="btn" style="background: #f39c12; margin-right: 10px;">📥 下载转换Excel</a>
             {% endif %}
-            <button class="btn" onclick="exportToExcel()" style="background: #3498db;">📤 导出当前列表</button>
+            <button id="exportBtn" class="btn" onclick="exportToExcel()" style="background: #3498db;" disabled>📤 导出当前列表</button>
+        </div>
+    </div>
+    
+    <!-- 添加单词表单 -->
+    <div id="addWordForm" class="card" style="display: none; margin-bottom: 2rem; background: #f8f9fa;">
+        <h4 style="margin-bottom: 1rem;">➕ 添加新单词</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 1rem; margin-bottom: 1rem;">
+            <div>
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">英文单词 *</label>
+                <input type="text" id="newWord" placeholder="请输入英文单词" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">音标</label>
+                <input type="text" id="newPhonetic" placeholder="请输入音标（可选）" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">中文翻译 *</label>
+                <input type="text" id="newTranslation" placeholder="请输入中文翻译" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+            <button class="btn" style="background: #27ae60;" onclick="addWord()">✅ 确认添加</button>
+            <button class="btn" style="background: #95a5a6;" onclick="hideAddWordForm()">❌ 取消</button>
         </div>
     </div>
     
@@ -48,7 +72,7 @@
             <tbody>
                 {% for word in words %}
                 <tr>
-                    <td style="text-align: center; font-weight: bold;">{{ word.sequence }}</td>
+                    <td style="text-align: center; font-weight: bold;">{{ word.sort_order }}</td>
                     <td style="font-weight: bold; color: #2c3e50;">{{ word.word }}</td>
                     <td style="color: #7f8c8d;">{{ word.phonetic or '-' }}</td>
                     <td>{{ word.translation }}</td>
@@ -88,7 +112,64 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- 加载SheetJS库 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 <script>
+// 库加载完成后启用导出按钮
+window.onload = function() {
+    const exportBtn = document.getElementById('exportBtn');
+    if (exportBtn) {
+        exportBtn.disabled = false;
+    }
+};
+
+function showAddWordForm() {
+    document.getElementById('addWordForm').style.display = 'block';
+}
+
+function hideAddWordForm() {
+    document.getElementById('addWordForm').style.display = 'none';
+    document.getElementById('newWord').value = '';
+    document.getElementById('newPhonetic').value = '';
+    document.getElementById('newTranslation').value = '';
+}
+
+function addWord() {
+    const word = document.getElementById('newWord').value.trim();
+    const phonetic = document.getElementById('newPhonetic').value.trim();
+    const translation = document.getElementById('newTranslation').value.trim();
+    
+    if (!word || !translation) {
+        alert('请填写单词和中文翻译！');
+        return;
+    }
+    
+    fetch('/admin/api/wordbooks/{{ wordbook.id }}/words', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            word: word,
+            phonetic: phonetic,
+            translation: translation
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('添加失败：' + data.message);
+        }
+    })
+    .catch(err => {
+        alert('添加失败：' + err.message);
+    });
+}
+
 function toggleStatus(event, id, currentStatus) {
     event.preventDefault();
     const action = currentStatus ? '下架' : '上架';
@@ -122,10 +203,10 @@ function exportToExcel() {
     // 添加单词数据
     {% for word in words %}
     data.push([
-        '{{ word.sequence }}',
-        '{{ word.word }}',
-        '{{ word.phonetic or "" }}',
-        '{{ word.translation }}'
+        {{ word.sort_order }},
+        "{{ word.word | replace('"', '\\"') }}",
+        "{{ (word.phonetic or '') | replace('"', '\\"') }}",
+        "{{ word.translation | replace('"', '\\"') }}"
     ]);
     {% endfor %}
     
@@ -135,16 +216,8 @@ function exportToExcel() {
     XLSX.utils.book_append_sheet(wb, ws, "单词列表");
     
     // 导出文件
-    XLSX.writeFile(wb, "{{ wordbook.name }}_单词列表.xlsx");
+    const filename = "{{ wordbook.name | replace('"', '_') }}_单词列表.xlsx";
+    XLSX.writeFile(wb, filename);
 }
-
-// 加载SheetJS库
-const script = document.createElement('script');
-script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-script.onload = function() {
-    // 库加载完成后启用导出按钮
-    document.querySelector('[onclick="exportToExcel()"]').disabled = false;
-};
-document.head.appendChild(script);
 </script>
 {% endblock %}

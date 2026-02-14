@@ -2,14 +2,9 @@
 
 一个基于 Flask + Vue3 的单词学习网站，支持 Excel/PDF 词库导入、在线学习、生词本管理和桌面版应用。
 
-> 🌐 **在线访问**
-> - 前端（用户端）: https://word-learning.pages.dev/
-> - 后端（管理端）: https://lain05.zeabur.app/admin
->
 > 🖥️ **本地运行地址**
 > - 前端（用户端）: http://localhost:4000
 > - 后端（管理端）: http://localhost:5000/admin
-> - 桌面版下载: http://localhost:4000/download
 
 ## 📁 项目结构
 
@@ -18,11 +13,9 @@
 ├── backend/                 # 后端（Flask）
 │   ├── app/
 │   │   ├── models/         # 数据模型
-│   │   ├── routes/         # 路由（含 PDF 转换和 EXE 下载）
-│   │   ├── services/       # 业务逻辑（Excel解析器）
+│   │   ├── routes/         # 路由
+│   │   ├── services/       # 业务逻辑
 │   │   └── templates/      # Jinja2 模板（管理后台）
-│   ├── uploads/            # 上传文件存储
-│   │   └── downloads/      # 桌面版 EXE 文件
 │   ├── requirements.txt    # Python 依赖
 │   └── wsgi.py            # 应用入口
 ├── frontend/               # 前端（Vue3 + Vite）
@@ -30,25 +23,32 @@
 │   │   ├── api/           # API 接口
 │   │   ├── router/        # 路由
 │   │   ├── stores/        # 状态管理
-│   │   └── views/         # 页面（含下载页面）
+│   │   └── views/         # 页面
 │   └── package.json
-├── 背单词/                # 桌面版应用（Tkinter）
+├── 桌面版/                # 桌面版应用（Tkinter）
 │   ├── main.py            # 主程序
 │   ├── database.py        # 数据库管理
 │   ├── pdf_reader.py      # PDF 解析
 │   ├── requirements.txt   # Python 依赖
 │   ├── build.spec         # PyInstaller 打包配置
-│   ├── 打包助手.py        # 一键打包工具
 │   └── 打包指南.md        # 详细打包教程
-├── docker/                # Docker 配置
-│   ├── backend.Dockerfile
-│   ├── frontend.Dockerfile
-│   └── nginx.conf
+├── Dockerfile             # 后端 Docker 镜像
 ├── docker-compose.yml     # 容器编排
-└── init.sql              # 数据库初始化
+├── init.sql              # 数据库初始化
+└── README.md
 ```
 
 ## 🚀 快速开始
+
+### Docker 部署（推荐）
+
+```bash
+docker compose up -d
+```
+
+访问地址：
+- 前端: http://localhost:4000
+- 后端: http://localhost:5000/admin
 
 ### 本地开发
 
@@ -78,16 +78,6 @@ npm run dev
 - 前端（用户端）: http://localhost:4000
 - 后端（管理端）: http://localhost:5000/admin
 
-### Docker 部署
-
-```bash
-docker-compose up -d
-```
-
-访问地址：
-- 前端: http://localhost:4000
-- 后端: http://localhost:5000/admin
-
 ## ✨ 主要功能
 
 ### 用户端
@@ -96,20 +86,20 @@ docker-compose up -d
 - ✅ 单词卡片翻转显示释义
 - ✅ 学习进度保存
 - ✅ 生词本管理
-- ✅ 桌面版应用下载（Windows）
 
 ### 管理端
-- ✅ Excel 词库上传（基于序列号识别，支持音标）
-- ✅ PDF 词库上传（基于序列号识别，支持音标）
+- ✅ Excel 词库上传（支持音标）
+- ✅ PDF 词库上传（支持音标）
 - ✅ 词库上架/下架管理
-- ✅ 词库删除和下载
-- ✅ 词库单词列表查看和导出
+- ✅ 词库单词列表查看
+- ✅ 词库单词导出 Excel
+- ✅ 单个单词添加功能
 - ✅ 系统统计数据
 
-### 桌面版应用（背单词/）
+### 桌面版应用
 - ✅ PDF 文件批量导入
 - ✅ 卡片式单词学习
-- ✅ 学习进度追踪
+- ✅ 学习进度追踪本地
 - ✅ 本地 SQLite 数据库存储
 - ✅ 无需网络，离线使用
 
@@ -126,174 +116,84 @@ docker-compose up -d
 
 ### Excel 格式
 支持的 Excel 格式：
-- 包含序列号列、单词列和释义列
-- 序列号列：纯数字（用于识别单词顺序）
-- 单词列：英文单词（支持音标，格式：`单词 [音标]`）
-- 释义列：中文释义
-
-示例：
-```
-| 序号 | 单词                     | 释义           |
-|------|--------------------------|----------------|
-| 1    | atmosphere [ˈætməsfɪə]  | n. 大气；气氛  |
-| 2    | hydrosphere              | n. 水圈        |
-```
+- 3列：序号、英文单词、中文释义
+- 2列：英文单词、中文释义（序号用行号）
+- 单词列可包含音标（格式：`单词 [音标]`）
 
 ### PDF 格式
 支持的 PDF 格式：
-- 包含表格结构的 PDF 文件
-- 表格应包含：序列号、英文单词、中文释义列
+- 6列表格（两组单词）
+- 第1-3列：序号、英文单词、中文释义
+- 第4-6列：序号、英文单词、中文释义
 - 单词列可包含音标（格式：`单词 [音标]`）
-- 自动识别并提取表格数据
 
-## 🔐 环境变量
+## 📦 桌面版打包与部署
 
-复制 `.env.example` 到 `.env` 并修改：
+### 打包步骤
 
-```env
-MYSQL_ROOT_PASSWORD=your_password
-SECRET_KEY=your_secret_key
-JWT_SECRET_KEY=your_jwt_secret_key
+```powershell
+# 1. 进入桌面版目录
+cd 桌面版
+
+# 2. 安装依赖
+python -m pip install -r requirements.txt
+python -m pip install PyInstaller
+
+# 3. 打包（两种方式任选一种）
+
+# 方式一：使用简单命令
+python -m PyInstaller --onefile --windowed --name "单词学习助手" main.py
+
+# 方式二：使用配置文件
+python -m PyInstaller --clean build.spec
+
+# 4. 打包完成后，EXE 文件位于：
+# dist/单词学习助手.exe
 ```
 
-## 📦 数据持久化
+### 部署到网站
 
-数据存储在 Docker volumes 中：
-- `mysql_data`: 数据库数据
-- `uploads_data`: 上传的 Excel 文件
+```powershell
+# 将打包好的 EXE 复制到后端下载目录
+copy dist\单词学习助手.exe ..\backend\uploads\downloads\
+```
 
-## 🛠️ 本地运行指南
+然后重启 Docker 后端服务：
+```bash
+docker compose up -d --build backend
+```
 
-### 环境准备
+### 下载地址
+- 前端下载页面：http://localhost:4000/download
+- 直接下载链接：http://localhost:5000/admin/download/desktop-app
 
-1. **安装 Python 3.8+**
-2. **安装 Node.js 16+**
-3. **安装 MySQL 8.0**（或使用 Docker）
-
-### 本地开发启动
+## 🐳 Docker 常用命令
 
 ```bash
-# 1. 克隆项目
-git clone <repository-url>
-cd 单词网站
+# 启动所有服务
+docker compose up -d
 
-# 2. 后端环境搭建
-cd backend
-pip install -r requirements.txt
+# 重新构建并启动
+docker compose up -d --build
 
-# 3. 前端环境搭建
-cd ../frontend
-npm install
+# 只重新构建后端
+docker compose up -d --build backend
 
-# 4. 配置环境变量
-cp ../.env.example .env
-# 编辑 .env 文件，设置数据库密码等
+# 查看服务状态
+docker compose ps
 
-# 5. 启动后端服务 (端口 5000)
-cd ../backend
-python wsgi.py
-
-# 6. 启动前端服务 (端口 4000，新终端)
-cd frontend
-npm run dev
-```
-
-### 访问地址
-
-- **前端（用户端）**: http://localhost:4000
-- **后端（管理端）**: http://localhost:5000/admin
-- **API 接口**: http://localhost:5000/api
-
-### 管理后台功能
-
-访问 http://localhost:5000/admin 后可以：
-
-1. **上传词库**
-   - Excel 上传：直接上传 Excel 文件
-   - PDF 上传：上传 PDF 文件，系统自动转换为词库
-
-2. **管理词库**
-   - 查看所有词库列表
-   - 上架/下架词库
-   - 查看词库详细单词列表
-   - 导出词库为 Excel
-   - 删除词库
-
-3. **系统监控**
-   - 查看用户统计
-   - 查看词库统计
-   - 查看单词总数
-
-### 数据库初始化
-
-```sql
--- 创建数据库
-CREATE DATABASE word_learning CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- 运行 init.sql 初始化表结构
-mysql -u root -p word_learning < init.sql
-```
-
-### Docker 本地部署
-
-```bash
-# 构建并启动所有服务
-docker-compose up -d
-
-# 查看运行状态
-docker-compose ps
-
-# 查看日志
-docker-compose logs -f backend
-docker-compose logs -f frontend
-
-# 重启服务
-docker-compose restart
-
-# 重新构建
-docker-compose up -d --build
+# 查看后端日志
+docker compose logs -f backend
 
 # 停止服务
-docker-compose down
+docker compose stop
 
-# 停止并删除数据卷
-docker-compose down -v
+# 删除容器（保留数据）
+docker compose down
+
+# 完全删除（包括数据）
+docker compose down -v
 ```
-
-访问地址：
-- 前端: http://localhost:4000
-- 后端: http://localhost:5000/admin
-
-### 生产部署
-
-**前端部署**：
-```bash
-cd frontend
-npm run build
-# 将 dist 目录部署到 Netlify/Vercel/Cloudflare Pages 等平台
-```
-
-**后端部署**：
-- 部署到 Zeabur 平台
-- 需要配置环境变量：数据库连接、密钥等
-- 确保上传文件夹权限设置正确
-
-### 常见问题
-
-1. **PDF 转换失败**
-   - 确保 PDF 包含表格结构
-   - 检查 PDF 是否为扫描版（需要 OCR）
-   - 查看后端日志获取详细错误信息
-
-2. **数据库连接失败**
-   - 检查 MySQL 服务是否启动
-   - 验证数据库连接参数
-   - 确认数据库用户权限
-
-3. **文件上传失败**
-   - 检查 uploads 文件夹权限
-   - 确认文件大小限制设置
-   - 验证文件格式是否支持
 
 ## 📄 许可证
 
