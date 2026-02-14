@@ -187,12 +187,13 @@ def api_upload_excel():
         db.session.add(wordbook)
         db.session.commit()
         
-        for word, phonetic, translation in words_data:
+        for idx, (word, phonetic, translation) in enumerate(words_data, 1):
             word_obj = Word(
                 wordbook_id=wordbook.id,
                 word=word,
                 phonetic=phonetic,
-                translation=translation
+                translation=translation,
+                word_order=idx
             )
             db.session.add(word_obj)
         
@@ -244,12 +245,13 @@ def api_convert_pdf():
         db.session.add(wordbook)
         db.session.commit()
         
-        for word, phonetic, translation in words_data:
+        for idx, (word, phonetic, translation) in enumerate(words_data, 1):
             word_obj = Word(
                 wordbook_id=wordbook.id,
                 word=word,
                 phonetic=phonetic,
-                translation=translation
+                translation=translation,
+                word_order=idx
             )
             db.session.add(word_obj)
         
