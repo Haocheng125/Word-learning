@@ -3,7 +3,6 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "python wsgi.py",
-    "healthcheckPath": "/health"
+    "startCommand": "python wsgi.py"
   }
 }
