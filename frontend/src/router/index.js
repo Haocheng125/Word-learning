@@ -36,6 +36,12 @@ const routes = [
     name: 'Download',
     component: () => import('../views/Download.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/database-format',
+    name: 'DatabaseFormat',
+    component: () => import('../views/DatabaseFormat.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
