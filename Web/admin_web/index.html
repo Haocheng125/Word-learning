@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>腾飞AI科技 - 管理后台</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <!-- 登录页面 -->
+    <div id="loginPage" class="login-container">
+        <div class="login-box">
+            <div class="logo-section">
+                <div class="logo-icon">TF</div>
+                <h1>腾飞AI科技</h1>
+                <p>管理后台系统</p>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="username" placeholder="请输入用户名" required>
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="password" placeholder="请输入密码" required>
+                </div>
+                <button type="submit" class="btn-login">登录</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 管理页面 -->
+    <div id="adminPage" class="admin-container" style="display: none;">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-icon">TF</div>
+                <span>管理后台</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-page="about">关于我们</a>
+                <a href="#" class="nav-item" data-page="contact">联系我们</a>
+                <a href="#" class="nav-item" data-page="products">产品与服务</a>
+                <a href="#" class="nav-item" data-page="cases">成功案例</a>
+                <a href="#" class="nav-item" data-page="consultations">用户咨询</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="btn-logout">退出登录</button>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 关于我们 -->
+            <div id="aboutPage" class="content-page active">
+                <div class="page-header">
+                    <h2>关于我们</h2>
+                </div>
+                <form id="aboutForm" class="content-form">
+                    <input type="hidden" id="about_id">
+                    <div class="form-group">
+                        <label>标题</label>
+                        <input type="text" id="about_title" placeholder="请输入标题" required>
+                    </div>
+                    <div class="form-group">
+                        <label>内容</label>
+                        <textarea id="about_content" rows="6" placeholder="请输入内容" required></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>统计1标签</label>
+                            <input type="text" id="about_stat1Label" placeholder="例如：服务企业">
+                        </div>
+                        <div class="form-group">
+                            <label>统计1值</label>
+                            <input type="text" id="about_stat1Value" placeholder="例如：500+">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>统计2标签</label>
+                            <input type="text" id="about_stat2Label" placeholder="例如：客户满意度">
+                        </div>
+                        <div class="form-group">
+                            <label>统计2值</label>
+                            <input type="text" id="about_stat2Value" placeholder="例如：98%">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>统计3标签</label>
+                            <input type="text" id="about_stat3Label" placeholder="例如：专利技术">
+                        </div>
+                        <div class="form-group">
+                            <label>统计3值</label>
+                            <input type="text" id="about_stat3Value" placeholder="例如：50+">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>图片URL</label>
+                        <input type="text" id="about_imageUrl" placeholder="请输入图片URL">
+                    </div>
+                    <button type="submit" class="btn-primary">保存</button>
+                </form>
+            </div>
+
+            <!-- 联系我们 -->
+            <div id="contactPage" class="content-page">
+                <div class="page-header">
+                    <h2>联系我们</h2>
+                </div>
+                <form id="contactForm" class="content-form">
+                    <input type="hidden" id="contact_id">
+                    <div class="form-group">
+                        <label>公司地址</label>
+                        <input type="text" id="contact_address" placeholder="请输入公司地址" required>
+                    </div>
+                    <div class="form-group">
+                        <label>联系电话</label>
+                        <input type="text" id="contact_phone" placeholder="请输入联系电话" required>
+                    </div>
+                    <div class="form-group">
+                        <label>电子邮箱</label>
+                        <input type="email" id="contact_email" placeholder="请输入电子邮箱" required>
+                    </div>
+                    <div class="form-group">
+                        <label>工作时间</label>
+                        <input type="text" id="contact_workingHours" placeholder="例如：周一至周五 9:00 - 18:00" required>
+                    </div>
+                    <button type="submit" class="btn-primary">保存</button>
+                </form>
+            </div>
+
+            <!-- 产品与服务 -->
+            <div id="productsPage" class="content-page">
+                <div class="page-header">
+                    <h2>产品与服务</h2>
+                    <button id="addProductBtn" class="btn-primary">添加产品</button>
+                </div>
+                <div id="productsList" class="items-list"></div>
+                
+                <!-- 产品编辑弹窗 -->
+                <div id="productModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 id="productModalTitle">添加产品</h3>
+                            <span class="close">&times;</span>
+                        </div>
+                        <form id="productForm">
+                            <input type="hidden" id="product_id">
+                            <div class="form-group">
+                                <label>标题</label>
+                                <input type="text" id="product_title" placeholder="请输入标题" required>
+                            </div>
+                            <div class="form-group">
+                                <label>图标</label>
+                                <input type="text" id="product_icon" placeholder="例如：🧠">
+                            </div>
+                            <div class="form-group">
+                                <label>描述</label>
+                                <textarea id="product_description" rows="4" placeholder="请输入描述" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>图片URL</label>
+                                <input type="text" id="product_imageUrl" placeholder="请输入图片URL">
+                            </div>
+                            <div class="form-group">
+                                <label>特性列表（每行一个）</label>
+                                <textarea id="product_features" rows="4" placeholder="请输入特性列表，每行一个"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>显示顺序</label>
+                                <input type="number" id="product_displayOrder" placeholder="数字越小越靠前" value="0">
+                            </div>
+                            <button type="submit" class="btn-primary">保存</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 成功案例 -->
+            <div id="casesPage" class="content-page">
+                <div class="page-header">
+                    <h2>成功案例</h2>
+                    <button id="addCaseBtn" class="btn-primary">添加案例</button>
+                </div>
+                <div id="casesList" class="items-list"></div>
+                
+                <!-- 案例编辑弹窗 -->
+                <div id="caseModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 id="caseModalTitle">添加案例</h3>
+                            <span class="close">&times;</span>
+                        </div>
+                        <form id="caseForm">
+                            <input type="hidden" id="case_id">
+                            <div class="form-group">
+                                <label>标题</label>
+                                <input type="text" id="case_title" placeholder="请输入标题" required>
+                            </div>
+                            <div class="form-group">
+                                <label>分类</label>
+                                <input type="text" id="case_category" placeholder="例如：金融行业">
+                            </div>
+                            <div class="form-group">
+                                <label>描述</label>
+                                <textarea id="case_description" rows="4" placeholder="请输入描述" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>图片URL</label>
+                                <input type="text" id="case_imageUrl" placeholder="请输入图片URL">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>成果1标签</label>
+                                    <input type="text" id="case_result1Label" placeholder="例如：问题解决率">
+                                </div>
+                                <div class="form-group">
+                                    <label>成果1值</label>
+                                    <input type="text" id="case_result1Value" placeholder="例如：85%">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>成果2标签</label>
+                                    <input type="text" id="case_result2Label" placeholder="例如：成本降低">
+                                </div>
+                                <div class="form-group">
+                                    <label>成果2值</label>
+                                    <input type="text" id="case_result2Value" placeholder="例如：60%">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>显示顺序</label>
+                                <input type="number" id="case_displayOrder" placeholder="数字越小越靠前" value="0">
+                            </div>
+                            <button type="submit" class="btn-primary">保存</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 用户咨询 -->
+            <div id="consultationsPage" class="content-page">
+                <div class="page-header">
+                    <h2>用户咨询</h2>
+                </div>
+                <div id="consultationsList" class="items-list"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>

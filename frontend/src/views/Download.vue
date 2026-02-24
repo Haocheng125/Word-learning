@@ -6,6 +6,7 @@
         <nav>
           <router-link to="/">首页</router-link>
           <router-link to="/vocabulary">生词本</router-link>
+          <router-link to="/database-format">数据库格式</router-link>
           <router-link to="/download">桌面版下载</router-link>
 
           <span class="user-info">{{ authStore.user?.username }}</span>

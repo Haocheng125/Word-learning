@@ -1,11 +1,16 @@
 <template>
   <div class="vocabulary-page">
-    <header class="page-header">
+    <!-- 导航栏 -->
+    <header class="page-header" :class="{ scrolled: isScrolled }">
       <div class="container">
-        <h1>我的生词本</h1>
+        <div class="logo">
+          <div class="logo-icon">📝</div>
+          <span class="logo-text">我的生词本</span>
+        </div>
         <nav>
           <router-link to="/">首页</router-link>
           <router-link to="/vocabulary">生词本</router-link>
+          <router-link to="/database-format">数据库格式</router-link>
         </nav>
       </div>
     </header>
@@ -21,8 +26,10 @@
       </div>
       
       <div v-else>
-        <div class="stats">
-          共 {{ total }} 个生词
+        <div class="section-header">
+          <div class="section-tag">生词本</div>
+          <h2>我的生词</h2>
+          <p>共 {{ total }} 个生词</p>
         </div>
         
         <div class="vocabulary-list">
@@ -77,7 +84,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import http from '../api/http'
 
 const vocabulary = ref([])
@@ -85,11 +92,17 @@ const loading = ref(true)
 const total = ref(0)
 const page = ref(1)
 const limit = ref(20)
+const isScrolled = ref(false)
 
 const totalPages = computed(() => Math.ceil(total.value / limit.value))
 
 onMounted(async () => {
   await fetchVocabulary()
+  window.addEventListener('scroll', handleScroll)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
 })
 
 async function fetchVocabulary() {
@@ -132,75 +145,178 @@ function formatDate(dateStr) {
   const date = new Date(dateStr)
   return date.toLocaleDateString('zh-CN')
 }
+
+function handleScroll() {
+  isScrolled.value = window.scrollY > 50
+}
 </script>
 
 <style scoped>
-.stats {
-  margin-bottom: 24px;
-  color: #606266;
+.vocabulary-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--dark-bg) 0%, #0d1321 100%);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  font-size: 24px;
+}
+
+.logo-text {
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--text-light), var(--accent-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 60px;
+  padding: 40px 20px;
+}
+
+.section-tag {
+  display: inline-block;
+  padding: 8px 20px;
+  background: rgba(0, 102, 255, 0.15);
+  border-radius: 50px;
+  font-size: 14px;
+  color: var(--accent-blue);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.section-header h2 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text-light);
+}
+
+.section-header p {
+  font-size: 16px;
+  color: var(--text-gray);
 }
 
 .vocabulary-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+  margin-bottom: 40px;
 }
 
 .vocabulary-item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
+  align-items: flex-start;
+  padding: 32px;
+  transition: all 0.4s ease;
+}
+
+.vocabulary-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 102, 255, 0.15);
+  border-color: rgba(0, 102, 255, 0.3);
 }
 
 .word-info {
   flex: 1;
+  margin-right: 24px;
 }
 
 .word-english {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: bold;
-  color: #303133;
-  margin-bottom: 4px;
+  color: var(--text-light);
+  margin-bottom: 8px;
+  text-shadow: 0 2px 10px rgba(0, 102, 255, 0.3);
 }
 
 .word-phonetic {
-  font-size: 16px;
-  color: #909399;
-  margin-bottom: 8px;
+  font-size: 18px;
+  color: var(--accent-blue);
+  margin-bottom: 12px;
+  font-style: italic;
 }
 
 .word-translation {
-  font-size: 18px;
-  color: #67c23a;
-  margin-bottom: 8px;
+  font-size: 20px;
+  color: #00b894;
+  margin-bottom: 16px;
+  line-height: 1.4;
 }
 
 .word-meta {
-  font-size: 12px;
-  color: #c0c4cc;
+  font-size: 14px;
+  color: var(--text-gray);
   display: flex;
-  gap: 16px;
+  gap: 24px;
+  flex-wrap: wrap;
 }
 
 .word-actions {
-  margin-left: 16px;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 8px;
 }
 
 .btn-sm {
-  padding: 6px 16px;
-  font-size: 12px;
+  padding: 8px 20px;
+  font-size: 14px;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+}
+
+.btn-sm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
 }
 
 .pagination {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 16px;
-  margin-top: 32px;
+  gap: 20px;
+  margin-top: 48px;
+  padding: 20px;
+  background: var(--card-bg);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .page-info {
-  color: #606266;
+  color: var(--text-gray);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .vocabulary-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .word-actions {
+    margin-top: 20px;
+    align-self: flex-end;
+  }
+  
+  .word-meta {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .section-header h2 {
+    font-size: 24px;
+  }
 }
 </style>

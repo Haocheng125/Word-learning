@@ -1,11 +1,16 @@
 <template>
   <div class="learn-page">
-    <header class="page-header">
+    <!-- 导航栏 -->
+    <header class="page-header" :class="{ scrolled: isScrolled }">
       <div class="container">
-        <h1>背单词</h1>
+        <div class="logo">
+          <div class="logo-icon">📚</div>
+          <span class="logo-text">背单词</span>
+        </div>
         <nav>
           <router-link to="/">返回首页</router-link>
           <router-link to="/vocabulary">生词本</router-link>
+          <router-link to="/database-format">数据库格式</router-link>
         </nav>
       </div>
     </header>
@@ -115,6 +120,7 @@ const learningStore = useLearningStore()
 
 const loading = ref(true)
 const showComplete = ref(false)
+const isScrolled = ref(false)
 
 const currentWord = computed(() => learningStore.currentWord)
 const showTranslation = computed(() => learningStore.showTranslation)
@@ -126,10 +132,12 @@ onMounted(async () => {
   
   // 添加键盘事件监听
   window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('scroll', handleScroll)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('scroll', handleScroll)
   learningStore.reset()
 })
 
@@ -150,7 +158,7 @@ function toggleTranslation() {
 }
 
 async function handleNext() {
-  if (progress.value.current_index >= progress.value.total_words) {
+  if (progress.value.current_index >= progress.total_words) {
     showComplete.value = true
     return
   }
@@ -195,79 +203,129 @@ function handleKeydown(e) {
       break
   }
 }
+
+function handleScroll() {
+  isScrolled.value = window.scrollY > 50
+}
 </script>
 
 <style scoped>
+.learn-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--dark-bg) 0%, #0d1321 100%);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  font-size: 24px;
+}
+
+.logo-text {
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--text-light), var(--accent-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .learn-content {
-  max-width: 600px;
+  max-width: 700px;
   margin: 0 auto;
-  padding: 20px 0;
+  padding: 80px 20px;
 }
 
 .progress-section {
-  margin-bottom: 32px;
+  margin-bottom: 48px;
 }
 
 .progress-bar {
   height: 12px;
-  background-color: #ebeef5;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   overflow: hidden;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #409eff, #67c23a);
+  background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
   border-radius: 6px;
-  transition: width 0.3s;
+  transition: width 0.6s ease;
+  box-shadow: 0 0 10px rgba(0, 102, 255, 0.5);
 }
 
 .progress-text {
   text-align: center;
-  color: #606266;
-  font-size: 16px;
+  color: var(--text-gray);
+  font-size: 18px;
+  font-weight: 500;
 }
 
 .word-card {
-  min-height: 300px;
+  min-height: 400px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s;
-  margin-bottom: 32px;
+  transition: all 0.4s ease;
+  margin-bottom: 48px;
+  position: relative;
+  overflow: hidden;
+}
+
+.word-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, rgba(0, 102, 255, 0.05) 0%, transparent 70%);
+  transition: all 0.4s ease;
 }
 
 .word-card:hover {
   transform: scale(1.02);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12px 40px rgba(0, 102, 255, 0.2);
+  border-color: rgba(0, 102, 255, 0.5);
 }
 
 .word-content {
   text-align: center;
-  padding: 40px;
+  padding: 60px 40px;
+  position: relative;
+  z-index: 10;
 }
 
 .word-english {
-  font-size: 48px;
+  font-size: 64px;
   font-weight: bold;
-  color: #303133;
-  margin-bottom: 16px;
+  color: var(--text-light);
+  margin-bottom: 24px;
+  text-shadow: 0 2px 10px rgba(0, 102, 255, 0.3);
 }
 
 .word-phonetic {
-  font-size: 24px;
-  color: #909399;
-  margin-bottom: 24px;
+  font-size: 32px;
+  color: var(--accent-blue);
+  margin-bottom: 32px;
+  font-style: italic;
 }
 
 .word-translation {
-  font-size: 28px;
-  color: #67c23a;
+  font-size: 36px;
+  color: #00b894;
   opacity: 0;
-  transform: translateY(10px);
-  transition: all 0.3s;
+  transform: translateY(20px);
+  transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  line-height: 1.4;
 }
 
 .word-translation.visible {
@@ -276,26 +334,42 @@ function handleKeydown(e) {
 }
 
 .hint {
-  color: #c0c4cc;
-  font-size: 14px;
-  margin-top: 24px;
+  color: var(--text-gray);
+  font-size: 16px;
+  margin-top: 32px;
+  font-style: italic;
 }
 
 .controls {
   display: flex;
   justify-content: center;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 24px;
+  margin-bottom: 32px;
 }
 
 .controls .btn {
-  min-width: 140px;
+  min-width: 160px;
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 50px;
+  transition: all 0.3s ease;
+}
+
+.controls .btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0, 102, 255, 0.4);
 }
 
 .shortcuts {
   text-align: center;
-  color: #c0c4cc;
-  font-size: 12px;
+  color: var(--text-gray);
+  font-size: 14px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  margin-top: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .complete-modal {
@@ -304,7 +378,8 @@ function handleKeydown(e) {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(10, 14, 23, 0.9);
+  backdrop-filter: blur(20px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -313,29 +388,101 @@ function handleKeydown(e) {
 
 .complete-content {
   text-align: center;
-  padding: 48px;
-  max-width: 400px;
+  padding: 60px;
+  max-width: 480px;
+  position: relative;
+  overflow: hidden;
+}
+
+.complete-content::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(0, 102, 255, 0.1) 0%, transparent 70%);
+  animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 0.5; }
 }
 
 .complete-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
+  font-size: 80px;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 10;
 }
 
 .complete-content h2 {
-  font-size: 28px;
-  color: #303133;
-  margin-bottom: 12px;
+  font-size: 32px;
+  color: var(--text-light);
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 10;
+  background: linear-gradient(90deg, var(--text-light), var(--accent-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .complete-content p {
-  color: #909399;
-  margin-bottom: 24px;
+  color: var(--text-gray);
+  margin-bottom: 32px;
+  font-size: 18px;
+  position: relative;
+  z-index: 10;
 }
 
 .complete-actions {
   display: flex;
-  gap: 16px;
+  gap: 20px;
   justify-content: center;
+  position: relative;
+  z-index: 10;
+}
+
+.complete-actions .btn {
+  padding: 16px 32px;
+  font-size: 16px;
+  border-radius: 50px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .learn-content {
+    padding: 60px 16px;
+  }
+  
+  .word-english {
+    font-size: 48px;
+  }
+  
+  .word-phonetic {
+    font-size: 24px;
+  }
+  
+  .word-translation {
+    font-size: 28px;
+  }
+  
+  .controls {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .controls .btn {
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .complete-content {
+    padding: 48px 24px;
+    margin: 0 16px;
+  }
 }
 </style>
