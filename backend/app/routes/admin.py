@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, send_from_directory
 from app.models.wordbook import Wordbook
 from app.models.word import Word
+from app.models.user import User
 from app.extensions import db
 from app.services.PDF_reader import extract_words_from_pdf
 import os
@@ -13,7 +14,7 @@ def index():
     total_wordbooks = Wordbook.query.count()
     active_wordbooks = Wordbook.query.filter_by(is_active=True).count()
     total_words = Word.query.count()
-    total_users = 0
+    total_users = User.query.count()
     return render_template('admin/index.html', 
                            total_wordbooks=total_wordbooks, 
                            active_wordbooks=active_wordbooks, 
