@@ -3,6 +3,7 @@ from datetime import timedelta
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+    ADMIN_KEY = os.environ.get('ADMIN_KEY', '0000')
     
     # 数据库配置 - 优先使用环境变量
     DATABASE_URL = (

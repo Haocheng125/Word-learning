@@ -2,6 +2,63 @@
 
 {% block title %}首页{% endblock %}
 
+{% block extra_css %}
+<style>
+    .admin-form {
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    
+    .admin-form .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .admin-form label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .admin-form input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s;
+    }
+    
+    .admin-form input:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+    
+    .alert {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .alert-error {
+        background: #fee;
+        color: #c0392b;
+        border: 1px solid #fcc;
+    }
+    
+    .alert-success {
+        background: #efe;
+        color: #27ae60;
+        border: 1px solid #cfc;
+    }
+    
+    .hidden {
+        display: none;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div style="text-align: center; padding: 2rem 0;">
     <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">📚 单词学习系统管理后台</h1>
@@ -44,6 +101,66 @@
     </div>
 </div>
 
+<!-- 管理员管理 -->
+<div class="card">
+    <h2>🔐 添加副管理员</h2>
+    <p style="color: #7f8c8d; margin-bottom: 1rem;">只有主管理员可以添加副管理员账号</p>
+    
+    <div id="alert-error" class="alert alert-error hidden"></div>
+    <div id="alert-success" class="alert alert-success hidden"></div>
+    
+    <form id="add-admin-form" class="admin-form">
+        <div class="form-group">
+            <label for="admin-key">管理员密钥</label>
+            <input 
+                type="text" 
+                id="admin-key" 
+                name="admin_key" 
+                placeholder="请输入管理员密钥"
+                required
+            />
+        </div>
+        
+        <div class="form-group">
+            <label for="username">用户名</label>
+            <input 
+                type="text" 
+                id="username" 
+                name="username" 
+                placeholder="请输入副管理员用户名"
+                required
+            />
+        </div>
+        
+        <div class="form-group">
+            <label for="email">邮箱</label>
+            <input 
+                type="email" 
+                id="email" 
+                name="email" 
+                placeholder="请输入副管理员邮箱"
+                required
+            />
+        </div>
+        
+        <div class="form-group">
+            <label for="password">密码</label>
+            <input 
+                type="password" 
+                id="password" 
+                name="password" 
+                placeholder="请输入密码（至少6位）"
+                required
+                minlength="6"
+            />
+        </div>
+        
+        <button type="submit" class="btn" id="add-admin-btn">
+            添加副管理员
+        </button>
+    </form>
+</div>
+
 <div class="card">
     <h2>✨ 功能说明</h2>
     <ul style="line-height: 2;">
@@ -51,6 +168,85 @@
         <li><strong>上架/下架</strong>：控制词库是否在前端显示，只有已上架的词库用户才能看到</li>
         <li><strong>上传词库</strong>：上传 Excel 或 PDF 文件，系统会自动解析并创建词库（默认下架状态）</li>
         <li><strong>下载词库</strong>：可以下载原始的 Excel 文件</li>
+        <li><strong>管理员管理</strong>：主管理员可以通过密钥添加副管理员账号</li>
     </ul>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('add-admin-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const adminKey = document.getElementById('admin-key').value.trim();
+        const username = document.getElementById('username').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const addAdminBtn = document.getElementById('add-admin-btn');
+        const alertError = document.getElementById('alert-error');
+        const alertSuccess = document.getElementById('alert-success');
+        
+        if (!adminKey || !username || !email || !password) {
+            showAlert('请填写所有字段', 'error');
+            return;
+        }
+        
+        if (password.length < 6) {
+            showAlert('密码至少6个字符', 'error');
+            return;
+        }
+        
+        addAdminBtn.disabled = true;
+        addAdminBtn.textContent = '添加中...';
+        
+        try {
+            const response = await fetch('/admin/api/admin/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    admin_key: adminKey,
+                    username: username,
+                    email: email,
+                    password: password
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showAlert('副管理员添加成功！', 'success');
+                document.getElementById('add-admin-form').reset();
+            } else {
+                showAlert(data.message || '添加失败', 'error');
+            }
+        } catch (error) {
+            showAlert('网络错误，请稍后重试', 'error');
+        } finally {
+            addAdminBtn.disabled = false;
+            addAdminBtn.textContent = '添加副管理员';
+        }
+    });
+    
+    function showAlert(message, type) {
+        const alertError = document.getElementById('alert-error');
+        const alertSuccess = document.getElementById('alert-success');
+        
+        if (type === 'error') {
+            alertError.textContent = message;
+            alertError.classList.remove('hidden');
+            alertSuccess.classList.add('hidden');
+        } else {
+            alertSuccess.textContent = message;
+            alertSuccess.classList.remove('hidden');
+            alertError.classList.add('hidden');
+        }
+        
+        setTimeout(() => {
+            alertError.classList.add('hidden');
+            alertSuccess.classList.add('hidden');
+        }, 5000);
+    }
+</script>
 {% endblock %}

@@ -63,5 +63,21 @@ def create_app():
             # 开发环境可以删除重建
             db.drop_all()
             db.create_all()
+        
+        # 创建主管理员账号（如果不存在）
+        from .models.user import User
+        super_admin = User.query.filter_by(username='Haocheng.Tang').first()
+        if not super_admin:
+            password_hash = bcrypt.generate_password_hash('Aa0213').decode('utf-8')
+            super_admin = User(
+                username='Haocheng.Tang',
+                email='haocheng.tang@example.com',
+                password_hash=password_hash,
+                is_admin=True,
+                is_super_admin=True
+            )
+            db.session.add(super_admin)
+            db.session.commit()
+            print('[INFO] 主管理员账号已创建：Haocheng.Tang / Aa0213')
     
     return app

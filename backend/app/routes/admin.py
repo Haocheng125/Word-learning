@@ -1,15 +1,68 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, send_from_directory
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, send_from_directory, session
 from app.models.wordbook import Wordbook
 from app.models.word import Word
 from app.models.user import User
-from app.extensions import db
+from app.extensions import db, bcrypt
 from app.services.PDF_reader import extract_words_from_pdf
+from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token
+from app.config import Config
 import os
 from werkzeug.utils import secure_filename
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
+def admin_required(f):
+    def decorated_function(*args, **kwargs):
+        token = request.cookies.get('admin_token')
+        if not token:
+            return redirect(url_for('admin.login'))
+        
+        try:
+            user_id = get_jwt_identity()
+            user = User.query.get(user_id)
+            if not user or not user.is_admin:
+                return redirect(url_for('admin.login'))
+        except:
+            return redirect(url_for('admin.login'))
+        
+        return f(*args, **kwargs)
+    decorated_function.__name__ = f.__name__
+    return decorated_function
+
+@admin_bp.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        data = request.get_json()
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        
+        if not username or not password:
+            return jsonify({'success': False, 'message': '用户名和密码不能为空'}), 400
+        
+        user = User.query.filter_by(username=username).first()
+        
+        if not user or not bcrypt.check_password_hash(user.password_hash, password):
+            return jsonify({'success': False, 'message': '用户名或密码错误'}), 401
+        
+        if not user.is_admin:
+            return jsonify({'success': False, 'message': '您没有管理员权限'}), 403
+        
+        access_token = create_access_token(identity=str(user.id))
+        
+        response = jsonify({'success': True, 'message': '登录成功', 'user': user.to_dict()})
+        response.set_cookie('admin_token', access_token, httponly=True, max_age=3600*24*7)
+        return response
+    
+    return render_template('admin/login.html')
+
+@admin_bp.route('/logout')
+def logout():
+    response = redirect(url_for('admin.login'))
+    response.delete_cookie('admin_token')
+    return response
+
 @admin_bp.route('/')
+@admin_required
 def index():
     total_wordbooks = Wordbook.query.count()
     active_wordbooks = Wordbook.query.filter_by(is_active=True).count()
@@ -22,6 +75,7 @@ def index():
                            total_users=total_users)
 
 @admin_bp.route('/wordbooks')
+@admin_required
 def wordbooks():
     page = request.args.get('page', 1, type=int)
     per_page = 10
@@ -29,12 +83,14 @@ def wordbooks():
     return render_template('admin/wordbooks.html', wordbooks=pagination.items, pagination=pagination)
 
 @admin_bp.route('/wordbooks/<int:wordbook_id>/words')
+@admin_required
 def wordbook_words(wordbook_id):
     wordbook = Wordbook.query.get_or_404(wordbook_id)
     words = Word.query.filter_by(wordbook_id=wordbook_id).order_by(Word.sort_order).all()
     return render_template('admin/wordbook_words.html', wordbook=wordbook, words=words)
 
 @admin_bp.route('/upload', methods=['GET', 'POST'])
+@admin_required
 def upload():
     if request.method == 'POST':
         if 'file' not in request.files:
@@ -95,6 +151,7 @@ def upload():
     return render_template('admin/upload.html')
 
 @admin_bp.route('/wordbooks/<int:wordbook_id>/toggle', methods=['POST'])
+@admin_required
 def toggle_wordbook(wordbook_id):
     wordbook = Wordbook.query.get_or_404(wordbook_id)
     wordbook.is_active = not wordbook.is_active
@@ -102,6 +159,7 @@ def toggle_wordbook(wordbook_id):
     return redirect(url_for('admin.wordbooks'))
 
 @admin_bp.route('/wordbooks/<int:wordbook_id>/delete', methods=['POST'])
+@admin_required
 def delete_wordbook(wordbook_id):
     wordbook = Wordbook.query.get_or_404(wordbook_id)
     Word.query.filter_by(wordbook_id=wordbook_id).delete()
@@ -211,6 +269,7 @@ def api_upload_excel():
             os.remove(file_path)
 
 @admin_bp.route('/download/desktop-app')
+@admin_required
 def download_desktop_app():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     app_dir = os.path.dirname(os.path.dirname(current_dir))
@@ -219,6 +278,7 @@ def download_desktop_app():
     return send_from_directory(downloads_dir, filename, as_attachment=True)
 
 @admin_bp.route('/api/convert-pdf', methods=['POST'])
+@admin_required
 def api_convert_pdf():
     if 'pdf_file' not in request.files:
         return jsonify({'success': False, 'message': '没有上传文件'}), 400
@@ -270,3 +330,51 @@ def api_convert_pdf():
     finally:
         if os.path.exists(file_path):
             os.remove(file_path)
+
+@admin_bp.route('/api/admin/add', methods=['POST'])
+@admin_required
+def add_admin():
+    user_id = get_jwt_identity()
+    current_user = User.query.get(user_id)
+    
+    if not current_user or not current_user.is_super_admin:
+        return jsonify({'success': False, 'message': '只有主管理员才能添加副管理员'}), 403
+    
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'success': False, 'message': '请提供管理员信息'}), 400
+    
+    admin_key = data.get('admin_key', '').strip()
+    username = data.get('username', '').strip()
+    email = data.get('email', '').strip()
+    password = data.get('password', '')
+    
+    if not admin_key or admin_key != Config.ADMIN_KEY:
+        return jsonify({'success': False, 'message': '管理员密钥错误'}), 403
+    
+    if not username or not email or not password:
+        return jsonify({'success': False, 'message': '用户名、邮箱和密码不能为空'}), 400
+    
+    if len(password) < 6:
+        return jsonify({'success': False, 'message': '密码至少6个字符'}), 400
+    
+    if User.query.filter_by(username=username).first():
+        return jsonify({'success': False, 'message': '用户名已存在'}), 400
+    
+    if User.query.filter_by(email=email).first():
+        return jsonify({'success': False, 'message': '邮箱已被注册'}), 400
+    
+    password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+    new_admin = User(
+        username=username,
+        email=email,
+        password_hash=password_hash,
+        is_admin=True,
+        is_super_admin=False
+    )
+    
+    db.session.add(new_admin)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': '副管理员添加成功', 'admin': new_admin.to_dict()})
