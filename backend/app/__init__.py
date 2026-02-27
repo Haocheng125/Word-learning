@@ -18,8 +18,8 @@ def create_app():
     allowed_origins = [origin.strip() for origin in allowed_origins.split(',')]
     
     cors.init_app(app, resources={
-        r"/api/*": {"origins": allowed_origins},
-        r"/admin*": {"origins": allowed_origins}
+        r"/api/*": {"origins": allowed_origins, "supports_credentials": True},
+        r"/admin*": {"origins": allowed_origins, "supports_credentials": True}
     })
     bcrypt.init_app(app)
     

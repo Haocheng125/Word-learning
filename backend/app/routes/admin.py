@@ -1,10 +1,10 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, send_from_directory, session
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, send_from_directory, session, make_response
 from app.models.wordbook import Wordbook
 from app.models.word import Word
 from app.models.user import User
 from app.extensions import db, bcrypt
 from app.services.PDF_reader import extract_words_from_pdf
-from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token
+from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, set_access_cookie
 from app.config import Config
 import os
 from werkzeug.utils import secure_filename
@@ -12,17 +12,10 @@ from werkzeug.utils import secure_filename
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 def admin_required(f):
+    @jwt_required(locations=['cookies'])
     def decorated_function(*args, **kwargs):
-        token = request.cookies.get('admin_token')
-        if not token:
-            return redirect(url_for('admin.login'))
-        
         try:
-            from flask_jwt_extended import decode_token
-            from app.config import Config
-            # 手动解码和验证token
-            decoded = decode_token(token, Config.JWT_SECRET_KEY)
-            user_id = decoded['sub']
+            user_id = get_jwt_identity()
             user = User.query.get(user_id)
             if not user or not user.is_admin:
                 return redirect(url_for('admin.login'))
@@ -54,7 +47,7 @@ def login():
         access_token = create_access_token(identity=str(user.id))
         
         response = jsonify({'success': True, 'message': '登录成功', 'user': user.to_dict()})
-        response.set_cookie('admin_token', access_token, httponly=True, max_age=3600*24*7)
+        set_access_cookie(response, access_token)
         return response
     
     return render_template('admin/login.html')
