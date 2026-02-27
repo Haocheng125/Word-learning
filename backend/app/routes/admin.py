@@ -18,7 +18,11 @@ def admin_required(f):
             return redirect(url_for('admin.login'))
         
         try:
-            user_id = get_jwt_identity()
+            from flask_jwt_extended import decode_token
+            from app.config import Config
+            # 手动解码和验证token
+            decoded = decode_token(token, Config.JWT_SECRET_KEY)
+            user_id = decoded['sub']
             user = User.query.get(user_id)
             if not user or not user.is_admin:
                 return redirect(url_for('admin.login'))
