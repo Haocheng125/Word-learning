@@ -4,7 +4,7 @@ from app.models.word import Word
 from app.models.user import User
 from app.extensions import db, bcrypt
 from app.services.PDF_reader import extract_words_from_pdf
-from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, set_access_cookie
+from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token
 from app.config import Config
 import os
 from werkzeug.utils import secure_filename
@@ -47,7 +47,14 @@ def login():
         access_token = create_access_token(identity=str(user.id))
         
         response = jsonify({'success': True, 'message': '登录成功', 'user': user.to_dict()})
-        set_access_cookie(response, access_token)
+        # 使用标准的set_cookie方法
+        response.set_cookie(
+            'admin_token',
+            access_token,
+            httponly=True,
+            max_age=3600*24*7,
+            samesite='Lax'
+        )
         return response
     
     return render_template('admin/login.html')
