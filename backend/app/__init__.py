@@ -94,10 +94,12 @@ def create_app():
             db.session.commit()
             print('[INFO] 主管理员账号已创建：Haocheng.Tang / Aa0213')
         else:
-            # 更新现有主管理员的is_super_admin状态
-            if not super_admin.is_super_admin:
+            # 更新现有主管理员的is_super_admin状态和密码
+            if not super_admin.is_super_admin or not bcrypt.check_password_hash(super_admin.password_hash, 'Aa0213'):
                 super_admin.is_super_admin = True
+                # 确保密码是Aa0213
+                super_admin.password_hash = bcrypt.generate_password_hash('Aa0213').decode('utf-8')
                 db.session.commit()
-                print('[INFO] 已更新主管理员的超级管理员状态')
+                print('[INFO] 已更新主管理员的超级管理员状态和密码')
     
     return app
