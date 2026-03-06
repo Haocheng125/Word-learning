@@ -101,5 +101,68 @@ def create_app():
                 super_admin.password_hash = bcrypt.generate_password_hash('Aa050213').decode('utf-8')
                 db.session.commit()
                 print('[INFO] 已更新主管理员的超级管理员状态和密码')
+        
+        # 创建默认词库（如果不存在）
+        from .models.wordbook import Wordbook
+        from .models.word import Word
+        if Wordbook.query.count() == 0:
+            # 创建默认词库
+            default_wordbooks = [
+                {
+                    'name': '基础英语单词',
+                    'description': '适合初学者的基础英语单词',
+                    'words': [
+                        ('hello', 'həˈləʊ', '你好'),
+                        ('world', 'wɜːld', '世界'),
+                        ('apple', 'ˈæpl', '苹果'),
+                        ('banana', 'bəˈnɑːnə', '香蕉'),
+                        ('cat', 'kæt', '猫'),
+                        ('dog', 'dɒɡ', '狗'),
+                        ('book', 'bʊk', '书'),
+                        ('pen', 'pen', '钢笔'),
+                        ('computer', 'kəmˈpjuːtə', '电脑'),
+                        ('phone', 'fəʊn', '手机')
+                    ]
+                },
+                {
+                    'name': '常用英语短语',
+                    'description': '日常生活中常用的英语短语',
+                    'words': [
+                        ('thank you', 'θæŋk juː', '谢谢'),
+                        ('you're welcome', 'jʊə ˈwelkəm', '不客气'),
+                        ('how are you', 'haʊ ɑː juː', '你好吗'),
+                        ('I'm fine', 'aɪm faɪn', '我很好'),
+                        ('good morning', 'ɡʊd ˈmɔːnɪŋ', '早上好'),
+                        ('good afternoon', 'ɡʊd ˌɑːftəˈnuːn', '下午好'),
+                        ('good evening', 'ɡʊd ˈiːvnɪŋ', '晚上好'),
+                        ('good night', 'ɡʊd naɪt', '晚安'),
+                        ('see you later', 'siː juː ˈleɪtə', '再见'),
+                        ('have a nice day', 'hæv ə naɪs deɪ', '祝你有愉快的一天')
+                    ]
+                }
+            ]
+            
+            for wb_data in default_wordbooks:
+                wordbook = Wordbook(
+                    name=wb_data['name'],
+                    description=wb_data['description'],
+                    word_count=len(wb_data['words']),
+                    is_active=True
+                )
+                db.session.add(wordbook)
+                db.session.flush()
+                
+                for idx, (word, phonetic, translation) in enumerate(wb_data['words'], 1):
+                    db_word = Word(
+                        wordbook_id=wordbook.id,
+                        word=word,
+                        phonetic=phonetic,
+                        translation=translation,
+                        sort_order=idx
+                    )
+                    db.session.add(db_word)
+            
+            db.session.commit()
+            print('[INFO] 已创建默认词库数据')
     
     return app
