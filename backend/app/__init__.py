@@ -58,21 +58,25 @@ def create_app():
     
     # 创建数据库表
     with app.app_context():
-        db.create_all()
-        
-        # 创建主管理员账号
-        from .models.user import User
-        super_admin = User.query.filter_by(username='Haocheng.Tang').first()
-        if not super_admin:
-            password_hash = bcrypt.generate_password_hash('Aa050213').decode('utf-8')
-            super_admin = User(
-                username='Haocheng.Tang',
-                email='haocheng.tang@example.com',
-                password_hash=password_hash,
-                is_admin=True,
-                is_super_admin=True
-            )
-            db.session.add(super_admin)
-            db.session.commit()
+        try:
+            db.create_all()
+            
+            # 创建主管理员账号
+            from .models.user import User
+            super_admin = User.query.filter_by(username='Haocheng.Tang').first()
+            if not super_admin:
+                password_hash = bcrypt.generate_password_hash('Aa050213').decode('utf-8')
+                super_admin = User(
+                    username='Haocheng.Tang',
+                    email='haocheng.tang@example.com',
+                    password_hash=password_hash,
+                    is_admin=True,
+                    is_super_admin=True
+                )
+                db.session.add(super_admin)
+                db.session.commit()
+        except Exception as e:
+            print(f'数据库初始化失败: {str(e)}')
+            print('应用将继续运行，但数据库功能可能不可用')
     
     return app

@@ -6,20 +6,30 @@ from app.extensions import db, bcrypt
 from app.services.PDF_reader import extract_words_from_pdf
 from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token
 from app.config import Config
+from datetime import timedelta
 import os
 from werkzeug.utils import secure_filename
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 def admin_required(f):
-    @jwt_required(locations=['cookies'])
     def decorated_function(*args, **kwargs):
         try:
-            user_id = get_jwt_identity()
+            # 从 cookie 中获取 token
+            token = request.cookies.get('admin_token')
+            if not token:
+                return redirect(url_for('admin.login'))
+            
+            # 验证 token
+            from flask_jwt_extended import decode_token
+            decoded = decode_token(token)
+            user_id = decoded['sub']
+            
             user = User.query.get(user_id)
             if not user or not user.is_admin:
                 return redirect(url_for('admin.login'))
-        except:
+        except Exception as e:
+            print(f'认证失败: {str(e)}')
             return redirect(url_for('admin.login'))
         
         return f(*args, **kwargs)
@@ -44,15 +54,19 @@ def login():
         if not user.is_admin:
             return jsonify({'success': False, 'message': '您没有管理员权限'}), 403
         
-        access_token = create_access_token(identity=str(user.id))
+        # 创建有效期为1天的token
+        access_token = create_access_token(
+            identity=str(user.id),
+            expires_delta=timedelta(days=1)
+        )
         
         response = jsonify({'success': True, 'message': '登录成功', 'user': user.to_dict()})
-        # 使用标准的set_cookie方法
+        # 使用Session Cookie（不设置max_age），页面关闭后自动失效
+        # 但token本身有效期为1天
         response.set_cookie(
             'admin_token',
             access_token,
             httponly=True,
-            max_age=3600*24*7,
             samesite='Lax'
         )
         return response
@@ -382,3 +396,34 @@ def add_admin():
     db.session.commit()
     
     return jsonify({'success': True, 'message': '副管理员添加成功', 'admin': new_admin.to_dict()})
+
+@admin_bp.route('/users')
+@admin_required
+def users():
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    pagination = User.query.order_by(User.created_at.desc()).paginate(page=page, per_page=per_page)
+    return render_template('admin/users.html', users=pagination.items, pagination=pagination)
+
+@admin_bp.route('/api/users/<int:user_id>', methods=['DELETE'])
+@admin_required
+def delete_user(user_id):
+    token = request.cookies.get('admin_token')
+    from flask_jwt_extended import decode_token
+    decoded = decode_token(token)
+    current_user_id = decoded['sub']
+    
+    current_user = User.query.get(current_user_id)
+    
+    user = User.query.get_or_404(user_id)
+    
+    if user.is_super_admin:
+        return jsonify({'success': False, 'message': '不能删除主管理员账号'}), 403
+    
+    if current_user.id == user.id:
+        return jsonify({'success': False, 'message': '不能删除自己的账号'}), 403
+    
+    db.session.delete(user)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': '用户已删除'})

@@ -1,0 +1,210 @@
+{% extends "admin/base.html" %}
+
+{% block title %}用户管理{% endblock %}
+
+{% block extra_css %}
+<style>
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .badge-admin {
+        background: #3498db;
+        color: white;
+    }
+    
+    .badge-super-admin {
+        background: #9b59b6;
+        color: white;
+    }
+    
+    .badge-user {
+        background: #95a5a6;
+        color: white;
+    }
+    
+    .password-cell {
+        font-family: monospace;
+        background: #f8f9fa;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        position: relative;
+    }
+    
+    .password-cell:hover::after {
+        content: ' (点击复制)';
+        color: #7f8c8d;
+        font-size: 0.8rem;
+    }
+    
+    .actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.85rem;
+    }
+    
+    .alert {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    
+    .alert-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .alert-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .hidden {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>👥 用户管理</h2>
+    <p style="color: #7f8c8d; margin-bottom: 1rem;">管理系统中的所有用户账号</p>
+    
+    <div id="alert-box" class="alert hidden"></div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>用户名</th>
+                <th>邮箱</th>
+                <th>密码</th>
+                <th>角色</th>
+                <th>注册时间</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr id="user-row-{{ user.id }}">
+                <td>{{ user.id }}</td>
+                <td><strong>{{ user.username }}</strong></td>
+                <td>{{ user.email }}</td>
+                <td>
+                    <span class="password-cell" onclick="copyPassword('{{ user.username }}', this)" title="点击复制">
+                        ********
+                    </span>
+                </td>
+                <td>
+                    {% if user.is_super_admin %}
+                    <span class="badge badge-super-admin">主管理员</span>
+                    {% elif user.is_admin %}
+                    <span class="badge badge-admin">副管理员</span>
+                    {% else %}
+                    <span class="badge badge-user">普通用户</span>
+                    {% endif %}
+                </td>
+                <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</td>
+                <td class="actions">
+                    {% if not user.is_super_admin %}
+                    <button class="btn btn-danger btn-sm" onclick="deleteUser({{ user.id }}, '{{ user.username }}')">
+                        删除
+                    </button>
+                    {% else %}
+                    <span style="color: #95a5a6; font-size: 0.85rem;">不可删除</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if pagination.pages > 1 %}
+    <div class="pagination">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('admin.users', page=pagination.prev_num) }}">上一页</a>
+        {% endif %}
+        
+        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_num %}
+                {% if page_num == pagination.page %}
+                <strong>{{ page_num }}</strong>
+                {% else %}
+                <a href="{{ url_for('admin.users', page=page_num) }}">{{ page_num }}</a>
+                {% endif %}
+            {% else %}
+                <span>...</span>
+            {% endif %}
+        {% endfor %}
+        
+        {% if pagination.has_next %}
+        <a href="{{ url_for('admin.users', page=pagination.next_num) }}">下一页</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>📋 说明</h2>
+    <ul style="line-height: 2;">
+        <li><strong>主管理员</strong>：系统最高权限，不可删除</li>
+        <li><strong>副管理员</strong>：由主管理员创建，可以管理词库和用户</li>
+        <li><strong>普通用户</strong>：前端注册的用户，可以删除</li>
+        <li><strong>密码查看</strong>：出于安全考虑，密码已加密存储，无法直接查看明文</li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function deleteUser(userId, username) {
+        if (!confirm(`确定要删除用户 "${username}" 吗？此操作不可恢复！`)) {
+            return;
+        }
+        
+        fetch(`/admin/api/users/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('用户删除成功', 'success');
+                document.getElementById(`user-row-${userId}`).remove();
+            } else {
+                showAlert(data.message || '删除失败', 'error');
+            }
+        })
+        .catch(error => {
+            showAlert('网络错误，请稍后重试', 'error');
+        });
+    }
+    
+    function copyPassword(username, element) {
+        showAlert(`用户 "${username}" 的密码已加密存储，无法查看明文`, 'error');
+    }
+    
+    function showAlert(message, type) {
+        const alertBox = document.getElementById('alert-box');
+        alertBox.textContent = message;
+        alertBox.className = `alert alert-${type}`;
+        
+        setTimeout(() => {
+            alertBox.classList.add('hidden');
+        }, 3000);
+    }
+</script>
+{% endblock %}
