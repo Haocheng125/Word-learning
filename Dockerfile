@@ -2,21 +2,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
-    gcc \
-    default-libmysqlclient-dev \
-    pkg-config \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
+# 安装依赖
 COPY backend/requirements.txt .
-
 RUN pip install --no-cache-dir -r requirements.txt
 
+# 复制后端代码
 COPY backend/ .
 
-RUN mkdir -p uploads
-
+# 暴露端口
 EXPOSE 5000
 
+# 运行应用
 CMD ["python", "wsgi.py"]

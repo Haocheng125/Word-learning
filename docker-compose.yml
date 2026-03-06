@@ -1,50 +1,42 @@
-name: word-learning
+version: '3.8'
+
 services:
-  db:
-    image: mysql:8.0
-    container_name: word-learning-db
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: word_learning
-      MYSQL_USER: word_user
-      MYSQL_PASSWORD: word_password
+  frontend:
+    build: ./frontend
     ports:
-      - "3307:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
 
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: word-learning-backend
-    environment:
-      DATABASE_URL: mysql+pymysql://word_user:word_password@db:3306/word_learning
-      SECRET_KEY: dev-secret-key-change-in-production
+    build: .
     ports:
       - "5000:5000"
+    environment:
+      - DATABASE_URL=mysql+pymysql://root:password@db:3306/word_learning?charset=utf8mb4
+      - SECRET_KEY=your-secret-key
+      - JWT_SECRET_KEY=your-jwt-secret-key
+      - FLASK_ENV=production
+      - ALLOWED_ORIGINS=*
     volumes:
-      - ./backend/uploads:/app/uploads
+      - ./uploads:/app/uploads
     depends_on:
-      db:
-        condition: service_healthy
-    restart: on-failure
+      - db
+    restart: unless-stopped
 
-  frontend:
-    image: node:18-alpine
-    container_name: word-learning-frontend
-    working_dir: /app
-    volumes:
-      - ./frontend:/app
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=word_learning
+      - MYSQL_CHARSET=utf8mb4
+      - MYSQL_COLLATION=utf8mb4_unicode_ci
     ports:
-      - "4000:4000"
-    command: >
-      sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 4000"
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
 
 volumes:
   mysql_data:

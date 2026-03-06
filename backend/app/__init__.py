@@ -13,9 +13,11 @@ def create_app():
     # 初始化扩展
     db.init_app(app)
     jwt.init_app(app)
-    # 配置 CORS - 只允许特定域名（严格安全控制）
-    allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'https://word-learning.pages.dev,https://word-learning-5nt.pages.dev')
-    allowed_origins = [origin.strip() for origin in allowed_origins.split(',')]
+    
+    # 配置 CORS
+    allowed_origins = os.environ.get('ALLOWED_ORIGINS', '*')
+    if allowed_origins != '*':
+        allowed_origins = [origin.strip() for origin in allowed_origins.split(',')]
     
     cors.init_app(app, resources={
         r"/api/*": {"origins": allowed_origins, "supports_credentials": True},
@@ -38,12 +40,12 @@ def create_app():
     app.register_blueprint(vocabulary_bp, url_prefix='/api/vocabulary')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     
-    # 根路由 - API 状态检查
+    # 根路由
     @app.route('/')
     def index():
         return {
             'status': 'ok',
-            'message': '单词学习系统 API 服务正常运行',
+            'message': '单词学习系统 API',
             'endpoints': {
                 'admin': '/admin',
                 'api': '/api'
@@ -56,29 +58,9 @@ def create_app():
     
     # 创建数据库表
     with app.app_context():
-        # 生产环境不删除表，只创建
-        if os.environ.get('FLASK_ENV') == 'production':
-            db.create_all()
-            
-            # 检查并添加is_super_admin列（如果不存在）
-            from sqlalchemy import text
-            try:
-                # 检查users表是否存在is_super_admin列
-                result = db.session.execute(text("SHOW COLUMNS FROM users LIKE 'is_super_admin'"))
-                if not result.fetchone():
-                    # 添加is_super_admin列
-                    db.session.execute(text("ALTER TABLE users ADD COLUMN is_super_admin BOOLEAN DEFAULT FALSE"))
-                    db.session.commit()
-                    print('[INFO] 已添加is_super_admin列到users表')
-            except Exception as e:
-                print(f'[WARNING] 检查is_super_admin列时出错: {e}')
-                # 继续执行，不中断应用启动
-        else:
-            # 开发环境可以删除重建
-            db.drop_all()
-            db.create_all()
+        db.create_all()
         
-        # 创建主管理员账号（如果不存在）
+        # 创建主管理员账号
         from .models.user import User
         super_admin = User.query.filter_by(username='Haocheng.Tang').first()
         if not super_admin:
@@ -92,16 +74,5 @@ def create_app():
             )
             db.session.add(super_admin)
             db.session.commit()
-            print('[INFO] 主管理员账号已创建：Haocheng.Tang / Aa050213')
-        else:
-            # 更新现有主管理员的is_super_admin状态和密码
-            if not super_admin.is_super_admin or not bcrypt.check_password_hash(super_admin.password_hash, 'Aa050213'):
-                super_admin.is_super_admin = True
-                # 确保密码是Aa050213
-                super_admin.password_hash = bcrypt.generate_password_hash('Aa050213').decode('utf-8')
-                db.session.commit()
-                print('[INFO] 已更新主管理员的超级管理员状态和密码')
-        
-
     
     return app

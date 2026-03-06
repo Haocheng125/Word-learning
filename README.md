@@ -1,204 +1,49 @@
 # 单词学习系统
 
-一个基于 Flask + Vue3 的单词学习网站，支持 Excel/PDF 词库导入、在线学习、生词本管理和桌面版应用。
+基于 Flask + Vue3 的单词学习网站。
 
-> 🌐 **在线访问地址**
-> - 前端（用户端）: https://word-learning.pages.dev
-> - 后端（管理端）: https://word-learning-production.up.railway.app/admin
->
-> 🖥️ **本地运行地址**
-> - 前端（用户端）: http://localhost:4000
-> - 后端（管理端）: http://localhost:5000/admin
-
-## 📁 项目结构
+## 项目结构
 
 ```
 单词网站/
-├── backend/                 # 后端（Flask）
+├── backend/          # 后端（Flask）
 │   ├── app/
-│   │   ├── models/         # 数据模型
-│   │   ├── routes/         # 路由
-│   │   ├── services/       # 业务逻辑
-│   │   └── templates/      # Jinja2 模板（管理后台）
-│   ├── requirements.txt    # Python 依赖
-│   └── wsgi.py            # 应用入口
-├── frontend/               # 前端（Vue3 + Vite）
-│   ├── src/
-│   │   ├── api/           # API 接口
-│   │   ├── router/        # 路由
-│   │   ├── stores/        # 状态管理
-│   │   └── views/         # 页面
-│   └── package.json
-├── 桌面版/                # 桌面版应用（Tkinter）
-│   ├── main.py            # 主程序
-│   ├── database.py        # 数据库管理
-│   ├── pdf_reader.py      # PDF 解析
-│   ├── requirements.txt   # Python 依赖
-│   ├── build.spec         # PyInstaller 打包配置
-│   └── 打包指南.md        # 详细打包教程
-├── Dockerfile             # 后端 Docker 镜像
-├── docker-compose.yml     # 容器编排
-├── init.sql              # 数据库初始化
-└── README.md
+│   │   ├── models/   # 数据模型
+│   │   ├── routes/   # 路由
+│   │   └── services/ # 业务逻辑
+│   └── requirements.txt
+├── frontend/         # 前端（Vue3 + Vite）
+│   └── src/
+└── 桌面版/           # 桌面版应用
 ```
 
-## 🚀 快速开始
+## 本地运行
 
-### Docker 部署（推荐）
+### 后端
 
 ```bash
-docker compose up -d
-```
-
-访问地址：
-- 前端: http://localhost:4000
-- 后端: http://localhost:5000/admin
-
-### 本地开发
-
-1. **安装依赖**
-```bash
-# 后端
 cd backend
 pip install -r requirements.txt
-
-# 前端
-cd ../frontend
-npm install
+python wsgi.py
 ```
 
-2. **启动服务**
-```bash
-# 后端 (端口 5000)
-cd backend
-python wsgi.py
+### 前端
 
-# 前端 (端口 4000)
+```bash
 cd frontend
+npm install
 npm run dev
 ```
 
-3. **访问应用**
-- 前端（用户端）: http://localhost:4000
-- 后端（管理端）: http://localhost:5000/admin
+## 管理员账号
 
-## ✨ 主要功能
+- 用户名：Haocheng.Tang
+- 密码：Aa050213
 
-### 用户端
-- ✅ 用户注册/登录
-- ✅ 选择词库开始学习
-- ✅ 单词卡片翻转显示释义
-- ✅ 学习进度保存
-- ✅ 生词本管理
+## 功能
 
-### 管理端
-- ✅ Excel 词库上传（支持音标）
-- ✅ PDF 词库上传（支持音标）
-- ✅ 词库上架/下架管理
-- ✅ 词库单词列表查看
-- ✅ 词库单词导出 Excel
-- ✅ 单个单词添加功能
-- ✅ 系统统计数据
-
-### 桌面版应用
-- ✅ PDF 文件批量导入
-- ✅ 卡片式单词学习
-- ✅ 学习进度追踪本地
-- ✅ 本地 SQLite 数据库存储
-- ✅ 无需网络，离线使用
-
-## 🔧 技术栈
-
-- **前端**: Vue 3 + Vite + Vue Router + Pinia
-- **后端**: Flask + SQLAlchemy + Flask-JWT-Extended
-- **数据库**: MySQL 8.0
-- **容器**: Docker + Docker Compose
-- **Excel 解析**: openpyxl
-- **PDF 解析**: pdfplumber
-
-## 📝 词库格式
-
-### Excel 格式
-支持的 Excel 格式：
-- 3列：序号、英文单词、中文释义
-- 2列：英文单词、中文释义（序号用行号）
-- 单词列可包含音标（格式：`单词 [音标]`）
-
-### PDF 格式
-支持的 PDF 格式：
-- 6列表格（两组单词）
-- 第1-3列：序号、英文单词、中文释义
-- 第4-6列：序号、英文单词、中文释义
-- 单词列可包含音标（格式：`单词 [音标]`）
-
-## 📦 桌面版打包与部署
-
-### 打包步骤
-
-```powershell
-# 1. 进入桌面版目录
-cd 桌面版
-
-# 2. 安装依赖
-python -m pip install -r requirements.txt
-python -m pip install PyInstaller
-
-# 3. 打包（两种方式任选一种）
-
-# 方式一：使用简单命令
-python -m PyInstaller --onefile --windowed --name "单词学习助手" main.py
-
-# 方式二：使用配置文件
-python -m PyInstaller --clean build.spec
-
-# 4. 打包完成后，EXE 文件位于：
-# dist/单词学习助手.exe
-```
-
-### 部署到网站
-
-```powershell
-# 将打包好的 EXE 复制到后端下载目录
-copy dist\单词学习助手.exe ..\backend\uploads\downloads\
-```
-
-然后重启 Docker 后端服务：
-```bash
-docker compose up -d --build backend
-```
-
-### 下载地址
-- 前端下载页面：http://localhost:4000/download
-- 直接下载链接：http://localhost:5000/admin/download/desktop-app
-
-## 🐳 Docker 常用命令
-
-```bash
-# 启动所有服务
-docker compose up -d
-
-# 重新构建并启动
-docker compose up -d --build
-
-# 只重新构建后端
-docker compose up -d --build backend
-
-# 查看服务状态
-docker compose ps
-
-# 查看后端日志
-docker compose logs -f backend
-
-# 停止服务
-docker compose stop
-
-# 删除容器（保留数据）
-docker compose down
-
-# 完全删除（包括数据）
-docker compose down -v
-```
-
-## 📄 许可证
-
-MIT License
+- 用户注册/登录
+- 单词书浏览
+- 在线学习
+- 生词本管理
+- 管理员后台
