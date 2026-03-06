@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ..extensions import db
 from ..models.wordbook import Wordbook
@@ -40,7 +40,7 @@ def get_wordbooks():
         return jsonify({'success': True, 'wordbooks': result})
     
     except Exception as e:
-        current_app.logger.error(f'获取词库列表失败: {str(e)}')
+        print(f'获取词库列表失败: {str(e)}')
         return jsonify({'success': False, 'message': '服务器错误'}), 500
 
 
