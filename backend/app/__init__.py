@@ -14,7 +14,7 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
     # 配置 CORS - 只允许特定域名（严格安全控制）
-    allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'https://word-learning.pages.dev')
+    allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'https://word-learning.pages.dev,https://word-learning-5nt.pages.dev')
     allowed_origins = [origin.strip() for origin in allowed_origins.split(',')]
     
     cors.init_app(app, resources={
