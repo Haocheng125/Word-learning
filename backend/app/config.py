@@ -30,5 +30,10 @@ class Config:
     JWT_COOKIE_SAMESITE = 'Lax'
     
     # 上传配置
-    UPLOAD_FOLDER = 'uploads'
+    if os.environ.get('VERCEL'):
+        # Vercel 环境使用临时目录
+        UPLOAD_FOLDER = '/tmp/uploads'
+    else:
+        # 本地开发环境
+        UPLOAD_FOLDER = 'uploads'
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB

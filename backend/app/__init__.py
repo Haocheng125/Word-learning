@@ -8,7 +8,11 @@ def create_app():
     app.config.from_object(Config)
     
     # 确保上传目录存在
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    try:
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    except Exception as e:
+        print(f'创建上传目录失败: {str(e)}')
+        print('应用将继续运行，但上传功能可能不可用')
     
     # 初始化扩展
     db.init_app(app)
