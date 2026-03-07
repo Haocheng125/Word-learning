@@ -26,8 +26,5 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 
-# Uploads
-uploads/
-
 # Docker
 .dockerignore

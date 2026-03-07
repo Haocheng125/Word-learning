@@ -123,7 +123,7 @@ def upload():
             return jsonify({'success': False, 'message': '请输入单词书名称'}), 400
         
         filename = secure_filename(file.filename)
-        upload_dir = 'uploads'
+        upload_dir = Config.UPLOAD_FOLDER
         if not os.path.exists(upload_dir):
             os.makedirs(upload_dir)
         
@@ -246,7 +246,7 @@ def api_upload_excel():
         return jsonify({'success': False, 'message': '请输入单词书名称'}), 400
     
     filename = secure_filename(file.filename)
-    upload_dir = 'uploads'
+    upload_dir = Config.UPLOAD_FOLDER
     if not os.path.exists(upload_dir):
         os.makedirs(upload_dir)
     
@@ -291,7 +291,7 @@ def api_upload_excel():
 def download_desktop_app():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     app_dir = os.path.dirname(os.path.dirname(current_dir))
-    downloads_dir = os.path.join(app_dir, 'uploads', 'downloads')
+    downloads_dir = os.path.join(Config.UPLOAD_FOLDER, 'downloads')
     filename = '单词学习助手.exe'
     return send_from_directory(downloads_dir, filename, as_attachment=True)
 
@@ -310,7 +310,7 @@ def api_convert_pdf():
         return jsonify({'success': False, 'message': '请输入单词书名称'}), 400
     
     filename = secure_filename(file.filename)
-    upload_dir = 'uploads'
+    upload_dir = Config.UPLOAD_FOLDER
     if not os.path.exists(upload_dir):
         os.makedirs(upload_dir)
     
